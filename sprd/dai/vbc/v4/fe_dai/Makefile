@@ -32,6 +32,9 @@ endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9610_)
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/mcdt_hw_r2p0/Module.symvers
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9621_)
+export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/mcdt_hw_r2p0/Module.symvers
+endif
 
 .PHONY: modules modules_install clean
 

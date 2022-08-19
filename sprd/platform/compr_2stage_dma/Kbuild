@@ -34,6 +34,9 @@ endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9610_)
 ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT_R2P0
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9621_)
+ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT_R2P0
+endif
 
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)
 
