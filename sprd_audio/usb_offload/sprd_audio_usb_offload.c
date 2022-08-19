@@ -48,8 +48,7 @@ int snd_vendor_audio_offload(int stream)
 /*
  * @return: 0 not offload mod, 1 offload mod
  */
-static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip,
-	int stream)
+static int sprd_usb_audio_offload_check(int stream)
 {
 	int is_offload_mod = 0;
 
@@ -59,10 +58,6 @@ static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip,
 		return is_offload_mod;
 	}
 
-	if (!chip) {
-		pr_err("%s chip is null stream =%d\n", __func__, stream);
-		return is_offload_mod;
-	}
 	if (snd_vendor_audio_offload(stream))
 		is_offload_mod = 1;
 	else
@@ -121,7 +116,7 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 			__func__, ep->cur_channels, is_mono ? "is mono" : "is stereo",
 			is_pcm_24bit ? "pcm 24" : "pcm 16bit", action ? "start" : "stop");
 
-		is_offload_mod = sprd_usb_audio_offload_check(ep->chip, stream);
+		is_offload_mod = sprd_usb_audio_offload_check(stream);
 
 		if (is_offload_mod) {
 
@@ -353,12 +348,28 @@ static void usb_offload_synctype_ignore(void *data, void *arg, int attr, bool *n
 
 	pr_info("%s, need_ignore = %s\n", __func__, (*need_ignore) ? "true" : "false");
 }
+
+static void usb_offload_suspend(void *data, struct snd_pcm_substream *substream, int cmd, bool *suspend)
+{
+//	struct snd_pcm_substream *substream = (struct snd_pcm_substream *)arg;
+	int is_offload_mod;
+
+	is_offload_mod = sprd_usb_audio_offload_check(substream->stream);
+	if (is_offload_mod && cmd == SNDRV_PCM_TRIGGER_SUSPEND) {
+		*suspend = false;
+		pr_info("%s, offload mode, ignore suspend\n", __func__);
+	}
+	pr_info("%s, is_offload_mod = %d, suspend = %s\n",
+			__func__, is_offload_mod, (*suspend) ? "true" : "false");
+}
+
 static int usb_offload_init(void)
 {
 	pr_info("%s\n", __func__);
 	register_trace_android_vh_audio_usb_offload_connect(usb_offload_add_ctrl, NULL);
 	register_trace_android_vh_audio_usb_offload_ep_action(usb_offload_ep_action, NULL);
 	register_trace_android_vh_audio_usb_offload_synctype(usb_offload_synctype_ignore, NULL);
+	register_trace_android_vh_audio_usb_offload_suspend(usb_offload_suspend, NULL);
 	return 0;
 }
 
