@@ -794,6 +794,8 @@ static const struct of_device_id pdm_of_match[] = {
 	  .data = &sprd_asoc_data_ums9230},
 	{ .compatible = "unisoc,pdm-ums9620",
 	  .data = &sprd_asoc_data_ums9620},
+	{ .compatible = "unisoc,pdm-ums9621",
+	  .data = &sprd_asoc_data_ums9620},
 	{},
 };
 

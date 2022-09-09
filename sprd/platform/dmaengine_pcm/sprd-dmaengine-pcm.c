@@ -1750,6 +1750,7 @@ static const struct of_device_id sprd_pcm_of_match[] = {
 	{.compatible = "unisoc,roc1-pcm-platform",},
 	{.compatible = "unisoc,qogirl6-pcm-platform",},
 	{.compatible = "unisoc,qogirn6pro-pcm-platform",},
+	{.compatible = "unisoc,qogirn6lite-pcm-platform",},
 	{},
 };
 

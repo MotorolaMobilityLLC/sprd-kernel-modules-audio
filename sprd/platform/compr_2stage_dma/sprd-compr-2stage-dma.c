@@ -2325,6 +2325,7 @@ static const struct of_device_id sprd_compress_of_match[] = {
 	{.compatible = "unisoc,roc1-compress-platform",},
 	{.compatible = "unisoc,qogirl6-compress-platform",},
 	{.compatible = "unisoc,qogirn6pro-compress-platform",},
+	{.compatible = "unisoc,qogirn6lite-compress-platform",},
 	{},
 };
 
