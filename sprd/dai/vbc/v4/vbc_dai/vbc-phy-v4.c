@@ -1349,6 +1349,38 @@ int dsp_vbc_mainmic_path_set(int type, int val)
 	return 0;
 }
 
+/* SND_KCTL_TYPE_USBOFFLOAD_RATE */
+int dsp_set_usboffload_rate(int rate)
+{
+	int value;
+	int ret;
+
+	value = rate;
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL, SND_KCTL_TYPE_USBOFFLOAD_RATE,
+		value, SND_VBC_DSP_IO_KCTL_SET,
+		&value, sizeof(value), AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_err("%s, Failed to set, ret: %d\n", __func__, ret);
+
+	return 0;
+}
+
+/* SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT */
+int dsp_set_usboffload_samplebit(int samplebit)
+{
+	int ret;
+	int usb_offload_samplebit = samplebit;
+	pr_info("%s samplebit = %d", __func__, samplebit);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL, SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT,
+		-1, SND_VBC_DSP_IO_KCTL_SET,
+		&usb_offload_samplebit, sizeof(usb_offload_samplebit), AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_err("%s, Failed to set, ret: %d\n", __func__, ret);
+
+	return 0;
+}
+
 /* SND_KCTL_TYPE_IVSENCE_FUNC */
 int dsp_ivsence_func(int enable, int iv_adc_id)
 {

@@ -589,6 +589,8 @@ enum KCTL_TYPE {
 	SND_KCTL_TYPE_CUST_DEV_SET = 0x32, /* sync with dsp */
 	SND_KCTL_TYPE_SYS_DEV_SET,
 	SND_KCTL_TYPE_CUST_VOL_SET,
+	SND_KCTL_TYPE_USBOFFLOAD_RATE,
+	SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT,
 	SND_KCTL_TYPE_AUDIO_ZOOM_ST,
 	SND_KCTL_TYPE_AUDIO_ZOOM_RATIO,
 	SND_KCTL_TYPE_AUDIO_ZOOM_FOCUS,
@@ -1273,6 +1275,7 @@ enum VBC_DA_ID_E {
 	VBC_DA0,
 	VBC_DA1,
 	VBC_DA2,
+	MCDT_DA,
 	VBC_DA_MAX,
 };
 
@@ -1282,6 +1285,7 @@ enum VBC_AD_ID_E {
 	VBC_AD2,
 	VBC_AD3,
 	VBC_TDM,
+	MCDT_AD,
 	VBC_AD_MAX,
 };
 
@@ -1550,10 +1554,19 @@ struct vbc_codec_priv {
 	enum VBC_DEVICE_TYPE cust_dev;
 	enum VBC_DEVICE_TYPE sys_dev;
 	u16 cust_vol;
+	int usb_mcdt_start;
+	int usb_mcdt_stop;
+	int usb_offload_rate;
+	int usb_offload_samplebit;
 	u32 audio_zoom_st;
 	int audio_zoom_ratio;
 	struct audio_zoom_focus_t audio_zoom_focus;
 };
+
+/* BE_DAI_ID_USB_MCDT: use MCDT_CHAN3 adc path */
+#define MCDT_CHAN_USB_MCDT_PLAY MCDT_CHAN3
+/* BE_DAI_ID_USB_MCDT: use MCDT_CHAN10 dac path */
+#define MCDT_CHAN_USB_MCDT_CAP MCDT_CHAN10
 
 /********************************************************************
  * ap phy define interface
@@ -1626,6 +1639,8 @@ void dsp_vbc_iis_master_width_set(u32 iis_width);
 int dsp_vbc_mainmic_path_set(int type, int val);
 int dsp_ivsence_func(int enable, int iv_adc_id);
 int dsp_vbc_voice_pcm_play_set(bool enable, int mode);
+int dsp_set_usboffload_rate(int rate);
+int dsp_set_usboffload_samplebit(int samplebit);
 
 int vbc_dsp_func_startup(int scene_id, int stream,
 	struct sprd_vbc_stream_startup_shutdown *startup_info);

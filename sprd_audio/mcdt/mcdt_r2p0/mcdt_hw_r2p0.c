@@ -385,6 +385,16 @@ static void mcdt_ap_dac_dma_ch5_sel(unsigned int chan_num)
 			BIT_MCDT_DAC_DMA_CH5_SEL0(0xf));
 }
 
+static void mcdt_cp_dac_dma_ch3_sel(unsigned int chan_num)
+{
+	if (!check_agcp_mcdt_clock()) {
+		pr_err("%s agcp mcdt clocl not available\n", __func__);
+		return;
+	}
+	mcdt_reg_update(MCDT_DMA_REQ_CFG1, BIT_MCDT_DAC_DMA_CH10_SEL0(chan_num),
+			BIT_MCDT_DAC_DMA_CH10_SEL0(0xf));
+}
+
 static void mcdt_ap_adc_dma_ch0_sel(unsigned int chan_num)
 {
 	if (!check_agcp_mcdt_clock()) {
@@ -435,8 +445,18 @@ static void mcdt_ap_adc_dma_ch4_sel(unsigned int chan_num)
 			BIT_MCDT_ADC_DMA_CH4_SEL0(0xf));
 }
 
+static void mcdt_cp_adc_dma_ch3_sel(unsigned int chan_num)
+{
+	if (!check_agcp_mcdt_clock()) {
+		pr_err("%s agcp mcdt clocl not available\n", __func__);
+		return;
+	}
+	mcdt_reg_update(MCDT_DMA_REQ_CFG2, BIT_MCDT_ADC_DMA_CH8_SEL0(chan_num),
+			BIT_MCDT_ADC_DMA_CH8_SEL0(0xf));
+}
+
 static void mcdt_dac_dma_chan_ack_sel(unsigned int chan_num,
-				 enum MCDT_DMA_ACK ack_num)
+				 enum MCDT_DAC_DMA_ACK ack_num)
 {
 	unsigned int reg;
 	unsigned int shift;
@@ -493,7 +513,7 @@ static void mcdt_dac_dma_chan_ack_sel(unsigned int chan_num,
 }
 
 static void mcdt_adc_dma_chan_ack_sel(unsigned int chan_num,
-				 enum MCDT_DMA_ACK ack_num)
+				 enum MCDT_ADC_DMA_ACK ack_num)
 {
 	unsigned int reg;
 	unsigned int shift;
@@ -690,32 +710,32 @@ static int mcdt_send_data_use_dma(unsigned int channel,
 	switch (dma_chan) {
 	case MCDT_AP_DMA_CH0:
 		mcdt_ap_dac_dma_ch0_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK0);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK0);
 		uid = MCDT_AP_DAC_CH0_WR_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH1:
 		mcdt_ap_dac_dma_ch1_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK1);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK1);
 		uid = MCDT_AP_DAC_CH1_WR_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH2:
 		mcdt_ap_dac_dma_ch2_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK2);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK2);
 		uid = MCDT_AP_DAC_CH2_WR_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH3:
 		mcdt_ap_dac_dma_ch3_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK3);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK3);
 		uid = MCDT_AP_DAC_CH3_WR_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH4:
 		mcdt_ap_dac_dma_ch4_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK4);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK4);
 		uid = MCDT_AP_DAC_CH4_WR_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH5:
 		mcdt_ap_dac_dma_ch5_sel(channel);
-		mcdt_dac_dma_chan_ack_sel(channel, MCDT_AP_ACK5);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK5);
 		uid = MCDT_AP_DAC_CH5_WR_REQ + 1;
 		break;
 	default:
@@ -725,6 +745,22 @@ static int mcdt_send_data_use_dma(unsigned int channel,
 
 	return uid;
 }
+
+void mcdt_usb_send_data_to_dsp(unsigned int channel, unsigned int emptymark)
+{
+	mcdt_da_set_watermark(channel, 0, emptymark);
+	mcdt_da_dma_enable(channel, 1);
+	mcdt_cp_dac_dma_ch3_sel(channel);
+	mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_CP_ACK_USB);
+}
+EXPORT_SYMBOL(mcdt_usb_send_data_to_dsp);
+
+void mcdt_usb_send_disable(unsigned int channel)
+{
+	mcdt_da_dma_enable(channel, 0);
+	mcdt_da_fifo_clr(channel);
+}
+EXPORT_SYMBOL(mcdt_usb_send_disable);
 
 /*
  *return : dma request uid,err return -1.
@@ -739,27 +775,27 @@ static int mcdt_rev_data_use_dma(unsigned int channel,
 	switch (dma_chan) {
 	case MCDT_AP_DMA_CH0:
 		mcdt_ap_adc_dma_ch0_sel(channel);
-		mcdt_adc_dma_chan_ack_sel(channel, MCDT_AP_ACK0);
+		mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_AP_ACK0);
 		uid = MCDT_AP_ADC_CH0_RD_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH1:
 		mcdt_ap_adc_dma_ch1_sel(channel);
-		mcdt_adc_dma_chan_ack_sel(channel, MCDT_AP_ACK1);
+		mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_AP_ACK1);
 		uid = MCDT_AP_ADC_CH1_RD_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH2:
 		mcdt_ap_adc_dma_ch2_sel(channel);
-		mcdt_adc_dma_chan_ack_sel(channel, MCDT_AP_ACK2);
+		mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_AP_ACK2);
 		uid = MCDT_AP_ADC_CH2_RD_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH3:
 		mcdt_ap_adc_dma_ch3_sel(channel);
-		mcdt_adc_dma_chan_ack_sel(channel, MCDT_AP_ACK3);
+		mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_AP_ACK3);
 		uid = MCDT_AP_ADC_CH3_RD_REQ + 1;
 		break;
 	case MCDT_AP_DMA_CH4:
 		mcdt_ap_adc_dma_ch4_sel(channel);
-		mcdt_adc_dma_chan_ack_sel(channel, MCDT_AP_ACK4);
+		mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_AP_ACK4);
 		uid = MCDT_AP_ADC_CH4_RD_REQ + 1;
 		break;
 	default:
@@ -769,6 +805,22 @@ static int mcdt_rev_data_use_dma(unsigned int channel,
 
 	return uid;
 }
+
+void mcdt_usb_rev_data_from_dsp(unsigned int channel, unsigned int fullmark)
+{
+	mcdt_ad_set_watermark(channel, fullmark, 0);
+	mcdt_ad_dma_enable(channel, 1);
+	mcdt_cp_adc_dma_ch3_sel(channel);
+	mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_CP_ACK_USB);
+}
+EXPORT_SYMBOL(mcdt_usb_rev_data_from_dsp);
+
+void mcdt_usb_rev_disable(unsigned int channel)
+{
+	mcdt_ad_dma_enable(channel, 0);
+	mcdt_ad_fifo_clr(channel);
+}
+EXPORT_SYMBOL(mcdt_usb_rev_disable);
 
 static unsigned int mcdt_sent_to_mcdt(unsigned int channel,
 				      unsigned int *tx_buf)

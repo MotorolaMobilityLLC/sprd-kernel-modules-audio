@@ -134,6 +134,11 @@ int mcdt_write_r2(unsigned int channel, char *pTxBuf, unsigned int size);
 int mcdt_read_r1(unsigned int channel, char *pRxBuf, unsigned int size);
 int mcdt_read_r2(unsigned int channel, char *pRxBuf, unsigned int size);
 
+void mcdt_usb_send_data_to_dsp(unsigned int channel, unsigned int emptymark);
+void mcdt_usb_send_disable(unsigned int channel);
+void mcdt_usb_rev_data_from_dsp(unsigned int channel, unsigned int fullmark);
+void mcdt_usb_rev_disable(unsigned int channel);
+
 int mcdt_dac_dma_enable_r1(unsigned int channel, unsigned int emptymark);
 int mcdt_dac_dma_enable_r2(unsigned int channel, unsigned int emptymark);
 int mcdt_dac_dma_enable(unsigned int channel, unsigned int emptymark)

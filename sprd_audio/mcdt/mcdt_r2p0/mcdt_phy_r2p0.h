@@ -135,6 +135,9 @@
 #define BIT_MCDT_DAC_DMA_CH0_SEL0(x)    ((x) & GENMASK(3, 0))
 #define BIT_GET_MCDT_DAC_DMA_CH0_SEL0(x)    ((x) & GENMASK(3, 0))
 
+/*DMA channel sel for CP3*/
+#define BIT_MCDT_DAC_DMA_CH10_SEL0(x)    (((x) & GENMASK(3, 0)) << 8)
+
 /*DMA channel sel for AP*/
 #define BIT_MCDT_ADC_DMA_CH4_SEL0(x)    (((x) & GENMASK(3, 0)) <<  28)
 #define BIT_GET_MCDT_ADC_DMA_CH4_SEL0(x)    (((x) >> 16) & GENMASK(3, 0))
@@ -146,6 +149,9 @@
 #define BIT_GET_MCDT_ADC_DMA_CH1_SEL0(x)    (((x) >> 4) & GENMASK(3, 0))
 #define BIT_MCDT_ADC_DMA_CH0_SEL0(x)    (((x) & GENMASK(3, 0))  << 12)
 #define BIT_GET_MCDT_ADC_DMA_CH0_SEL0(x)    ((x) & GENMASK(3, 0))
+
+/*DMA channel sel for CP3*/
+#define BIT_MCDT_ADC_DMA_CH8_SEL0(x)    (((x) & GENMASK(3, 0)) <<  12)
 
 enum MCDT_FIFO_INT {
 	MCDT_ADC_FIFO_AE_INT = 0,
@@ -178,6 +184,33 @@ enum MCDT_DMA_ACK {
 	MCDT_TGDSP_ACK0,
 	MCDT_LDSP_ACK0
 };
+
+enum MCDT_DAC_DMA_ACK {
+	MCDT_DAC_AP_ACK0 = 0,
+	MCDT_DAC_AP_ACK1,
+	MCDT_DAC_AP_ACK2,
+	MCDT_DAC_AP_ACK3,
+	MCDT_DAC_AP_ACK4,
+	MCDT_DAC_AP_ACK5,
+	MCDT_DAC_AP_ACK6,
+	MCDT_DAC_PUB_CP_ACK0,
+	MCDT_DAC_TGDSP_ACK0,
+	MCDT_DAC_LDSP_ACK0,
+	MCDT_DAC_CP_ACK_USB
+};
+
+enum MCDT_ADC_DMA_ACK {
+	MCDT_ADC_AP_ACK0 = 0,
+	MCDT_ADC_AP_ACK1,
+	MCDT_ADC_AP_ACK2,
+	MCDT_ADC_AP_ACK3,
+	MCDT_ADC_AP_ACK4,
+	MCDT_ADC_PUB_CP_ACK0,
+	MCDT_ADC_TGDSP_ACK0,
+	MCDT_ADC_LDSP_ACK0,
+	MCDT_ADC_CP_ACK_USB
+};
+
 
 enum {
 	MCDT_I2S_RW_FIFO_DEF = 0,
