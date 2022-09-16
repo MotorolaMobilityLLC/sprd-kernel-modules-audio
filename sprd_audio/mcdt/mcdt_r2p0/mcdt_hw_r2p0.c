@@ -746,21 +746,21 @@ static int mcdt_send_data_use_dma(unsigned int channel,
 	return uid;
 }
 
-void mcdt_usb_send_data_to_dsp(unsigned int channel, unsigned int emptymark)
+void mcdt_usb_send_data_to_dsp_r2(unsigned int channel, unsigned int emptymark)
 {
 	mcdt_da_set_watermark(channel, 0, emptymark);
 	mcdt_da_dma_enable(channel, 1);
 	mcdt_cp_dac_dma_ch3_sel(channel);
 	mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_CP_ACK_USB);
 }
-EXPORT_SYMBOL(mcdt_usb_send_data_to_dsp);
+EXPORT_SYMBOL(mcdt_usb_send_data_to_dsp_r2);
 
-void mcdt_usb_send_disable(unsigned int channel)
+void mcdt_usb_send_disable_r2(unsigned int channel)
 {
 	mcdt_da_dma_enable(channel, 0);
 	mcdt_da_fifo_clr(channel);
 }
-EXPORT_SYMBOL(mcdt_usb_send_disable);
+EXPORT_SYMBOL(mcdt_usb_send_disable_r2);
 
 /*
  *return : dma request uid,err return -1.
@@ -806,21 +806,21 @@ static int mcdt_rev_data_use_dma(unsigned int channel,
 	return uid;
 }
 
-void mcdt_usb_rev_data_from_dsp(unsigned int channel, unsigned int fullmark)
+void mcdt_usb_rev_data_from_dsp_r2(unsigned int channel, unsigned int fullmark)
 {
 	mcdt_ad_set_watermark(channel, fullmark, 0);
 	mcdt_ad_dma_enable(channel, 1);
 	mcdt_cp_adc_dma_ch3_sel(channel);
 	mcdt_adc_dma_chan_ack_sel(channel, MCDT_ADC_CP_ACK_USB);
 }
-EXPORT_SYMBOL(mcdt_usb_rev_data_from_dsp);
+EXPORT_SYMBOL(mcdt_usb_rev_data_from_dsp_r2);
 
-void mcdt_usb_rev_disable(unsigned int channel)
+void mcdt_usb_rev_disable_r2(unsigned int channel)
 {
 	mcdt_ad_dma_enable(channel, 0);
 	mcdt_ad_fifo_clr(channel);
 }
-EXPORT_SYMBOL(mcdt_usb_rev_disable);
+EXPORT_SYMBOL(mcdt_usb_rev_disable_r2);
 
 static unsigned int mcdt_sent_to_mcdt(unsigned int channel,
 				      unsigned int *tx_buf)

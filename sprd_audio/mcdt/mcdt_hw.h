@@ -134,10 +134,45 @@ int mcdt_write_r2(unsigned int channel, char *pTxBuf, unsigned int size);
 int mcdt_read_r1(unsigned int channel, char *pRxBuf, unsigned int size);
 int mcdt_read_r2(unsigned int channel, char *pRxBuf, unsigned int size);
 
-void mcdt_usb_send_data_to_dsp(unsigned int channel, unsigned int emptymark);
-void mcdt_usb_send_disable(unsigned int channel);
-void mcdt_usb_rev_data_from_dsp(unsigned int channel, unsigned int fullmark);
-void mcdt_usb_rev_disable(unsigned int channel);
+void mcdt_usb_send_data_to_dsp_r2(unsigned int channel, unsigned int emptymark);
+void mcdt_usb_send_disable_r2(unsigned int channel);
+void mcdt_usb_rev_data_from_dsp_r2(unsigned int channel, unsigned int fullmark);
+void mcdt_usb_rev_disable_r2(unsigned int channel);
+void mcdt_usb_send_data_to_dsp(unsigned int channel, unsigned int emptymark)
+{
+	if (MCDT_USED_VERSION == MCDT_VERSION_R1)
+		return;
+	else
+		mcdt_usb_send_data_to_dsp_r2(channel, emptymark);
+
+}
+
+void mcdt_usb_send_disable(unsigned int channel)
+{
+	if (MCDT_USED_VERSION == MCDT_VERSION_R1)
+		return;
+	else
+		mcdt_usb_send_disable_r2(channel);
+
+}
+
+void mcdt_usb_rev_data_from_dsp(unsigned int channel, unsigned int fullmark)
+{
+	if (MCDT_USED_VERSION == MCDT_VERSION_R1)
+		return;
+	else
+		mcdt_usb_rev_data_from_dsp_r2(channel, fullmark);
+
+}
+
+void mcdt_usb_rev_disable(unsigned int channel)
+{
+	if (MCDT_USED_VERSION == MCDT_VERSION_R1)
+		return;
+	else
+		mcdt_usb_rev_disable_r2(channel);
+
+}
 
 int mcdt_dac_dma_enable_r1(unsigned int channel, unsigned int emptymark);
 int mcdt_dac_dma_enable_r2(unsigned int channel, unsigned int emptymark);
