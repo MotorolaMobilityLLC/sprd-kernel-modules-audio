@@ -126,6 +126,7 @@ static char *fe_dai_id_aif_name_playback[FE_DAI_ID_MAX] = {
 	[FE_DAI_ID_VOICE_PCM_P] = "FE_IF_VOICE_PCM_P",
 	[FE_DAI_ID_HIFI_P] = "FE_IF_HIFI_P",
 	[FE_DAI_ID_HIFI_FAST_P] = NULL,
+	[FE_DAI_ID_DP_P] = "DP_DL",
 	[FE_DAI_ID_MM_P] = "FE_IF_MM_P",
 };
 

@@ -746,12 +746,16 @@ static int sprd_agcp_i2s_dai_probe(struct snd_soc_dai *dai)
 		dai_id_aif_name_playback[0]) {
 		intercon.source = dai_id_aif_name_playback[0];
 		intercon.sink = dai->driver->playback.stream_name;
+		pr_info("Add route for playback: Src = %s, Sink = %s\n",
+				intercon.source, intercon.sink);
 		snd_soc_dapm_add_routes(&dai->component->dapm, &intercon, 1);
 	}
 	if (dai->driver->capture.stream_name &&
 			dai_id_aif_name_capture[0]) {
 		intercon.source = dai->driver->capture.stream_name;
 		intercon.sink = dai_id_aif_name_capture[0];
+		pr_info("Add route for capture: Src = %s, Sink = %s\n",
+				intercon.source, intercon.sink);
 		snd_soc_dapm_add_routes(&dai->component->dapm, &intercon, 1);
 	}
 
@@ -1058,16 +1062,15 @@ static int sprd_dai_probe(struct platform_device *pdev)
 	switch (dai_data->id) {
 	case AGCP_IIS0_TX:
 	case AGCP_IIS0_RX:
+		pm_runtime_set_active(&pdev->dev);
+		pm_runtime_enable(&pdev->dev);
+		dev_info(&pdev->dev, "<-- agdsp_pd is enabled for THIS device now\n");
 		return sprd_agcp_i2s_probe(pdev);
 	default:
 		dev_err(&pdev->dev, "%s: unknown port id (%u)\n",
 			__func__, dai_data->id);
 		return -EINVAL;
 	}
-
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	dev_info(&pdev->dev, "<-- agdsp_pd is enabled for THIS device now\n");
 
 }
 
