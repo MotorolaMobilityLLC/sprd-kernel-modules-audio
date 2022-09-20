@@ -743,6 +743,8 @@ int aud_smsg_recv(u8 dst, struct aud_smsg *msg, int timeout)
 			aud_smsg_ch_send(ipc, (struct aud_smsg *)&msg);
 			msg.channel = AMSG_CH_DSP_ASSERT_CTL;
 			aud_smsg_ch_send(ipc, (struct aud_smsg *)&msg);
+			msg.channel = AMSG_CH_DSP_TRIGGER_RX;
+			aud_smsg_ch_send(ipc, (struct aud_smsg *)&msg);
 			spin_unlock_irqrestore(&(ipc->rxpinlock), flags_rx);
 			spin_unlock_irqrestore(&(ipc->txpinlock), flags_tx);
 			aud_smsg_wakeup_all_ch(ipc);
