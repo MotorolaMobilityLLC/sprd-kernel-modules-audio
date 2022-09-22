@@ -385,6 +385,16 @@ static void mcdt_ap_dac_dma_ch5_sel(unsigned int chan_num)
 			BIT_MCDT_DAC_DMA_CH5_SEL0(0xf));
 }
 
+static void mcdt_ap_dac_dma_ch6_sel(unsigned int chan_num)
+{
+	if (!check_agcp_mcdt_clock()) {
+		pr_err("%s agcp mcdt clocl not available\n", __func__);
+		return;
+	}
+	mcdt_reg_update(MCDT_DMA_REQ_CFG0, BIT_MCDT_DAC_DMA_CH6_SEL0(chan_num),
+			BIT_MCDT_DAC_DMA_CH6_SEL0(0xf));
+}
+
 static void mcdt_cp_dac_dma_ch3_sel(unsigned int chan_num)
 {
 	if (!check_agcp_mcdt_clock()) {
@@ -738,6 +748,11 @@ static int mcdt_send_data_use_dma(unsigned int channel,
 		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK5);
 		uid = MCDT_AP_DAC_CH5_WR_REQ + 1;
 		break;
+	case MCDT_AP_DMA_CH6:
+		mcdt_ap_dac_dma_ch6_sel(channel);
+		mcdt_dac_dma_chan_ack_sel(channel, MCDT_DAC_AP_ACK6);
+		uid = MCDT_AP_DAC_CH6_WR_REQ + 1;
+		break;
 	default:
 		uid = -1;
 		break;
@@ -1011,6 +1026,9 @@ static int mcdt_dma_channel_get(unsigned int channel)
 		break;
 	case MCDT_CHAN10:
 		dma_channel = MCDT_AP_DMA_CH5;
+		break;
+	case MCDT_CHAN9:
+		dma_channel = MCDT_AP_DMA_CH6;
 		break;
 	default:
 		dma_channel = -EINVAL;
