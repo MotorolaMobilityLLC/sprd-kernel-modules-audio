@@ -1597,6 +1597,7 @@ static int sprd_platform_compr_trigger(struct snd_soc_component *component,
 		spin_lock_irq(&srtd->lock);
 		atomic_set(&srtd->start, 1);
 		srtd->stream_state = COMPR_TRIGGERED;
+		snd_compr_use_pause_in_draining(cstream);
 		spin_unlock_irq(&srtd->lock);
 
 		if (srtd->received_total < runtime->fragment_size &&
