@@ -29,6 +29,7 @@ ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_UMP9620
 endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9621_)
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_UMP9620
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_DNS_N6L
 endif
 
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)

@@ -379,6 +379,20 @@ static void sprd_dma_config(struct snd_pcm_substream *substream,
 					DMA_SLAVE_BUSWIDTH_2_BYTES;
 			vbc_pcm_normal_ap01_p.desc.fragmens_len =
 				VBC_AUDPLY01_FRAGMENT;
+#if defined(CONFIG_UNISOC_AUDIO_DNS_N6L)
+			vbc_pcm_normal_ap01_p.dev_paddr[0] =
+				vbc_phy_ap2dsp(VBC_AUDPLY_FIFO_WR_1 +
+				get_ap_vbc_phy_base());
+			vbc_pcm_normal_ap01_p.dev_paddr[1] =
+				vbc_phy_ap2dsp(VBC_AUDPLY_FIFO_WR_0 +
+				get_ap_vbc_phy_base());
+			vbc_pcm_normal_ap01_p.channels[0] = DMA_REQ_DA1_DEV_ID;
+			vbc_pcm_normal_ap01_p.channels[1] = DMA_REQ_DA0_DEV_ID;
+			vbc_pcm_normal_ap01_p.used_dma_channel_name[0] =
+				"normal_p_r";
+			vbc_pcm_normal_ap01_p.used_dma_channel_name[1] =
+				"normal_p_l";
+#else
 			vbc_pcm_normal_ap01_p.dev_paddr[0] =
 				vbc_phy_ap2dsp(VBC_AUDPLY_FIFO_WR_0 +
 				get_ap_vbc_phy_base());
@@ -391,6 +405,7 @@ static void sprd_dma_config(struct snd_pcm_substream *substream,
 				"normal_p_l";
 			vbc_pcm_normal_ap01_p.used_dma_channel_name[1] =
 				"normal_p_r";
+#endif
 		} else {
 			/*normal ap01 capture*/
 			vbc_pcm_normal_ap01_c.name = "VBC NORMAL AP01 CAP";

@@ -1715,7 +1715,11 @@ static int sprd_codec_digital_open(struct snd_soc_component *codec)
 	sprd_codec_sample_rate_setting(sprd_codec);
 
 	/*peng.lee added this according to janus.li's email*/
+#if defined(CONFIG_SND_SOC_UNISOC_CODEC_DNS_N6L)
+	snd_soc_component_update_bits(codec, SOC_REG(AUD_SDM_CTL0), 0xFFFF, 0x0100);
+#else
 	snd_soc_component_update_bits(codec, SOC_REG(AUD_SDM_CTL0), 0xFFFF, 0);
+#endif
 
 	/* Set the left/right clock selection. */
 	if (sprd_codec->lrclk_sel[LRCLK_SEL_DAC])
@@ -1732,10 +1736,11 @@ static int sprd_codec_digital_open(struct snd_soc_component *codec)
 	 * temporay method to disable DNS, waiting ASIC to improve
 	 * this feature
 	 */
-
+#if !defined(CONFIG_SND_SOC_UNISOC_CODEC_DNS_N6L)
 	snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_AUTOGATE_EN), 0xffff,
 			    0x3303);
 	snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_SW), BIT(RG_DNS_SW), 0);
+#endif
 
 	return ret;
 }
@@ -2832,80 +2837,80 @@ static int dns_event(struct snd_soc_dapm_widget *w,
 				    RG_DNS_LEVEL_SET_0(0x7fff));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_1),
 				    RG_DNS_LEVEL_SET_1(0xffff),
-				    RG_DNS_LEVEL_SET_1(0x00fa));
+				    RG_DNS_LEVEL_SET_1(0x0ccb));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_2),
 					RG_DNS_LEVEL_SET_2(0xffff),
-					RG_DNS_LEVEL_SET_2(0x00fa));
+					RG_DNS_LEVEL_SET_2(0x0731));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_3),
 					RG_DNS_LEVEL_SET_3(0xffff),
-					RG_DNS_LEVEL_SET_3(0x00fa));
+					RG_DNS_LEVEL_SET_3(0x040b));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_4),
 					RG_DNS_LEVEL_SET_4(0xffff),
-					RG_DNS_LEVEL_SET_4(0x00fa));
+					RG_DNS_LEVEL_SET_4(0x0245));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_5),
 					RG_DNS_LEVEL_SET_5(0xffff),
-					RG_DNS_LEVEL_SET_5(0x00fa));
+					RG_DNS_LEVEL_SET_5(0x0146));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_6),
 					RG_DNS_LEVEL_SET_6(0xffff),
-					RG_DNS_LEVEL_SET_6(0x00fa));
+					RG_DNS_LEVEL_SET_6(0x00b7));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_7),
 					RG_DNS_LEVEL_SET_7(0xffff),
-					RG_DNS_LEVEL_SET_7(0x00b1));
+					RG_DNS_LEVEL_SET_7(0x0066));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_8),
 					RG_DNS_LEVEL_SET_8(0xffff),
-					RG_DNS_LEVEL_SET_8(0x007d));
+					RG_DNS_LEVEL_SET_8(0x0039));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_9),
 					RG_DNS_LEVEL_SET_9(0xffff),
-					RG_DNS_LEVEL_SET_9(0x0058));
+					RG_DNS_LEVEL_SET_9(0x001f));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_10),
 					RG_DNS_LEVEL_SET_10(0xffff),
-					RG_DNS_LEVEL_SET_10(0x003e));
+					RG_DNS_LEVEL_SET_10(0x0011));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_11),
 					RG_DNS_LEVEL_SET_11(0xffff),
-					RG_DNS_LEVEL_SET_11(0x002b));
+					RG_DNS_LEVEL_SET_11(0x0009));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_LEVEL_SET_12),
 					RG_DNS_LEVEL_SET_12(0xffff),
-					RG_DNS_LEVEL_SET_12(0x001e));
+					RG_DNS_LEVEL_SET_12(0x0004));
 
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_0),
 				    RG_DNS_DG_GAIN_SET_0(0xffff),
-				    RG_DNS_DG_GAIN_SET_0(0x0200));
+				    RG_DNS_DG_GAIN_SET_0(0x0203));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_1),
 				    RG_DNS_DG_GAIN_SET_1(0xffff),
-				    RG_DNS_DG_GAIN_SET_1(0x02d4));
+				    RG_DNS_DG_GAIN_SET_1(0x02d2));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_2),
 				    RG_DNS_DG_GAIN_SET_2(0xffff),
-				    RG_DNS_DG_GAIN_SET_2(0x0400));
+				    RG_DNS_DG_GAIN_SET_2(0x03fa));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_3),
 				    RG_DNS_DG_GAIN_SET_3(0xffff),
-				    RG_DNS_DG_GAIN_SET_3(0x05a8));
+				    RG_DNS_DG_GAIN_SET_3(0x059c));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_4),
 				    RG_DNS_DG_GAIN_SET_4(0xffff),
-				    RG_DNS_DG_GAIN_SET_4(0x0800));
+				    RG_DNS_DG_GAIN_SET_4(0x07dd));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_5),
 				    RG_DNS_DG_GAIN_SET_5(0xffff),
-				    RG_DNS_DG_GAIN_SET_5(0x0b50));
+				    RG_DNS_DG_GAIN_SET_5(0x0b1b));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_6),
 				    RG_DNS_DG_GAIN_SET_6(0xffff),
-				    RG_DNS_DG_GAIN_SET_6(0x1000));
+				    RG_DNS_DG_GAIN_SET_6(0x0f94));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_7),
 				    RG_DNS_DG_GAIN_SET_7(0xffff),
-				    RG_DNS_DG_GAIN_SET_7(0x16a0));
+				    RG_DNS_DG_GAIN_SET_7(0x15e8));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_8),
 				    RG_DNS_DG_GAIN_SET_8(0xffff),
-				    RG_DNS_DG_GAIN_SET_8(0x2000));
+				    RG_DNS_DG_GAIN_SET_8(0x1eb1));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_9),
 				    RG_DNS_DG_GAIN_SET_9(0xffff),
-				    RG_DNS_DG_GAIN_SET_9(0x2d41));
+				    RG_DNS_DG_GAIN_SET_9(0x2ae8));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_10),
 				    RG_DNS_DG_GAIN_SET_10(0xffff),
-				    RG_DNS_DG_GAIN_SET_10(0x4000));
+				    RG_DNS_DG_GAIN_SET_10(0x3bb5));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_11),
 				    RG_DNS_DG_GAIN_SET_11(0xffff),
-				    RG_DNS_DG_GAIN_SET_11(0x5a82));
+				    RG_DNS_DG_GAIN_SET_11(0x53f4));
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_SET_12),
 				    RG_DNS_DG_GAIN_SET_12(0xffff),
-				    RG_DNS_DG_GAIN_SET_12(0x8000));
+				    RG_DNS_DG_GAIN_SET_12(0x7696));
 
 		snd_soc_component_update_bits(codec, SOC_REG(AUD_DNS_DG_GAIN_VT_MAX),
 				    RG_DNS_DG_GAIN_VT_MAX(0xf),
@@ -3696,8 +3701,12 @@ static const struct snd_soc_dapm_route sprd_codec_intercon[] = {
 	{"HP DEPOP", NULL, "DIG_CLK_INTC"},
 	{"HP DEPOP", NULL, "SDM DC OS"},
 	{"HPRCV COM Virt", NULL, "DAC Gain"},
+#if defined(CONFIG_SND_SOC_UNISOC_CODEC_DNS_N6L)
+	{"DNS", NULL, "HPRCV COM Virt"},
+	{"DAHP OS", NULL, "DNS"},
+#else
 	{"DAHP OS", NULL, "HPRCV COM Virt"},
-	//{"DAHP OS", NULL, "DNS"},
+#endif
 
 	{"DAHPL EN", NULL, "DAHP OS"},
 	{"HPL EAR Sel", NULL, "DAHPL EN"},
