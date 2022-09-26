@@ -4486,7 +4486,7 @@ static int dsp_usb_offload_rate_put(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
 
-	value = ucontrol->value.enumerated.item[0];
+	value = ucontrol->value.integer.value[0];
 	sp_asoc_pr_dbg("%s, value=%d\n", __func__, value);
 	vbc_codec->usb_offload_rate = value;
 	dsp_set_usboffload_rate(value);
@@ -4523,6 +4523,58 @@ static int dsp_usb_offload_samplebit_put(struct snd_kcontrol *kcontrol,
 
 	vbc_codec->usb_offload_samplebit = value;
 	dsp_set_usboffload_samplebit(value);
+
+	return value;
+}
+
+static int dsp_usb_mcdt_out_device_get(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->usb_mcdt_out_device;
+
+	return 0;
+}
+
+static int dsp_usb_mcdt_out_device_put(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.integer.value[0];
+	sp_asoc_pr_dbg("%s, value=%d\n", __func__, value);
+	vbc_codec->usb_mcdt_out_device = value;
+	dsp_usb_mcdt_out_device_set(value);
+
+	return value;
+}
+
+static int dsp_usb_mcdt_in_device_get(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->usb_mcdt_in_device;
+
+	return 0;
+}
+
+static int dsp_usb_mcdt_in_device_put(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.integer.value[0];
+	sp_asoc_pr_dbg("%s, value=%d\n", __func__, value);
+	vbc_codec->usb_mcdt_in_device = value;
+	dsp_usb_mcdt_in_device_set(value);
 
 	return value;
 }
@@ -5236,6 +5288,16 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 		     usb_offload_samplebit_enum,
 		     dsp_usb_offload_samplebit_get,
 		     dsp_usb_offload_samplebit_put),
+	SOC_SINGLE_EXT("DSP_USB_MCDT_OUT_DEVICE",
+		       SND_SOC_NOPM, 0,
+		       MAX_32_BIT, 0,
+		       dsp_usb_mcdt_out_device_get,
+		       dsp_usb_mcdt_out_device_put),
+	SOC_SINGLE_EXT("DSP_USB_MCDT_IN_DEVICE",
+		       SND_SOC_NOPM, 0,
+		       MAX_32_BIT, 0,
+		       dsp_usb_mcdt_in_device_get,
+		       dsp_usb_mcdt_in_device_put),
 	SOC_SINGLE_BOOL_EXT("AUDIO_ZOOM_ST", 0,
 		dsp_audio_zoom_st_get, dsp_audio_zoom_st_put),
 	SOC_SINGLE_EXT("AUDIO_ZOOM_RATIO",
@@ -6233,11 +6295,6 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	para->dac_id = get_startup_scene_dac_id(scene_id);
 	para->adc_id = get_startup_scene_adc_id(scene_id);
 
-	if (vbc_codec->usb_mcdt_start) {
-		para->dac_id = MCDT_DA;
-		para->adc_id = MCDT_AD;
-	}
-
 	pr_debug("adc_id %d, dmic_chn_sel %d\n", para->adc_id,
 		 vbc_codec->dmic_chn_sel);
 	if (vbc_codec->dmic_chn_sel)
@@ -6400,10 +6457,6 @@ static void fill_dsp_shutdown_data(struct vbc_codec_priv *vbc_codec,
 	shutdown_info->startup_para.dac_id = dac_id;
 	shutdown_info->startup_para.adc_id = adc_id;
 
-	if (vbc_codec->usb_mcdt_stop) {
-		shutdown_info->startup_para.dac_id = MCDT_DA;
-		shutdown_info->startup_para.adc_id = MCDT_AD;
-	}
 }
 
 static void dsp_shutdown(struct vbc_codec_priv *vbc_codec,
@@ -7207,13 +7260,6 @@ static int scene_normal_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_NORMAL_AP01_USB_MCDT ||
-		be_dai_id == BE_DAI_ID_NORMAL_AP23_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		normal_vbc_protect_mutex_lock(stream);
@@ -7262,12 +7308,8 @@ static void scene_normal_shutdown(struct snd_pcm_substream *substream,
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_NORMAL_AP01_USB_MCDT ||
 		be_dai_id == BE_DAI_ID_NORMAL_AP23_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -7766,12 +7808,6 @@ static int scene_capture_dsp_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if(be_dai_id == BE_DAI_ID_CAPTURE_DSP_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -7808,11 +7844,7 @@ static void scene_capture_dsp_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_CAPTURE_DSP_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -8151,12 +8183,6 @@ static int scene_fast_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_FAST_P_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -8193,11 +8219,7 @@ static void scene_fast_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FAST_P_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, 48);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -8347,12 +8369,6 @@ static int scene_offload_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_OFFLOAD_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -8389,11 +8405,7 @@ static void scene_offload_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_OFFLOAD_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -8882,12 +8894,6 @@ static int scene_voice_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_VOICE_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start= 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -8925,12 +8931,8 @@ static void scene_voice_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_VOICE_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop= 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -9434,12 +9436,6 @@ static int scene_voip_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_VOIP_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start= 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -9477,12 +9473,8 @@ static void scene_voip_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_VOIP_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -9629,12 +9621,6 @@ static int scene_loop_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_LOOP_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		ret = dsp_startup(vbc_codec, scene_id, stream);
@@ -9672,12 +9658,8 @@ static void scene_loop_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_LOOP_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -9824,12 +9806,6 @@ static int scene_fm_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_FM_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		pr_info("%s, force_on_xtl\n", __func__);
@@ -9867,11 +9843,7 @@ static void scene_fm_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FM_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -10760,12 +10732,6 @@ static int scene_fm_dsp_startup(struct snd_pcm_substream *substream,
 	if (!vbc_codec)
 		return 0;
 	startup_lock_mtx(scene_id, stream);
-	if (be_dai_id == BE_DAI_ID_FM_DSP_USB_MCDT) {
-		vbc_codec->usb_mcdt_start = 1;
-	}
-	else {
-		vbc_codec->usb_mcdt_start = 0;
-	}
 	startup_add_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 1) {
 		set_scene_flag(scene_id, stream);
@@ -10804,11 +10770,7 @@ static void scene_fm_dsp_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FM_DSP_USB_MCDT) {
-		vbc_codec->usb_mcdt_stop = 1;
 		mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
-	}
-	else {
-		vbc_codec->usb_mcdt_stop = 0;
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {

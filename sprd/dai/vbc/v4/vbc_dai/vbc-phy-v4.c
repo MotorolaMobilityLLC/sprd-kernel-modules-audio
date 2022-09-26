@@ -1381,6 +1381,36 @@ int dsp_set_usboffload_samplebit(int samplebit)
 	return 0;
 }
 
+/* SND_KCTL_TYPE_USB_MCDT_OUT_DEVICE */
+void dsp_usb_mcdt_out_device_set(u32 dev_flag)
+{
+	int ret;
+	u32 usb_out_dev_flag = dev_flag;
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+			   SND_KCTL_TYPE_USB_MCDT_OUT_DEVICE,
+			   -1, SND_VBC_DSP_IO_KCTL_SET,
+			   &usb_out_dev_flag, sizeof(usb_out_dev_flag),
+			   AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_warn("Failed to set usb_out_dev_flag, ret %d\n", ret);
+}
+
+/* SND_KCTL_TYPE_USB_MCDT_IN_DEVICE */
+void dsp_usb_mcdt_in_device_set(u32 dev_flag)
+{
+	int ret;
+	u32 usb_in_dev_flag = dev_flag;
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+			   SND_KCTL_TYPE_USB_MCDT_IN_DEVICE,
+			   -1, SND_VBC_DSP_IO_KCTL_SET,
+			   &usb_in_dev_flag, sizeof(usb_in_dev_flag),
+			   AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_warn("Failed to set usb_in_dev_flag, ret %d\n", ret);
+}
+
 /* SND_KCTL_TYPE_IVSENCE_FUNC */
 int dsp_ivsence_func(int enable, int iv_adc_id)
 {
