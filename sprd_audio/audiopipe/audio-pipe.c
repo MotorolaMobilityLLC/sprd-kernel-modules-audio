@@ -37,9 +37,14 @@
 #define	AUDIO_PIPE_WAKEUP		_IOW(AUDIO_PIPE_MARGIC, 0, int)
 #define	AUDIO_PIPE_BTHAL_STATE_SET		_IOW(AUDIO_PIPE_MARGIC, 1, int)
 #define	AUDIO_PIPE_BTHAL_STATE_GET		_IOR(AUDIO_PIPE_MARGIC, 0, int)
+#define	AUDIO_PIPE_STHAL_STATE_SET		_IOW(AUDIO_PIPE_MARGIC, 2, int)
+#define	AUDIO_PIPE_STHAL_STATE_GET		_IOR(AUDIO_PIPE_MARGIC, 3, int)
 
 #define BTHAL_STATE_RUNNING		0
 #define BTHAL_STATE_IDLE		1
+#define STHAL_STATE_RUNNING		0
+#define STHAL_STATE_IDLE		1
+
 #define unalign_memcpy  memcpy
 
 enum {
@@ -66,6 +71,7 @@ struct aud_pipe_device {
 };
 
 static u32 g_bthal_state = BTHAL_STATE_IDLE;
+static u32 g_sthal_state = STHAL_STATE_IDLE;
 
 static int aud_pipe_recv_cmd(uint16_t channel, struct aud_smsg *o_msg,
 	int32_t timeout)
@@ -315,6 +321,16 @@ static long aud_pipe_ioctl(struct file *filp,
 	case AUDIO_PIPE_BTHAL_STATE_GET:
 		pr_info("BTHAL_STATE_GET:%d\n", g_bthal_state);
 		if (put_user(g_bthal_state, (u32 __user *)argp))
+			return -EFAULT;
+		break;
+	case AUDIO_PIPE_STHAL_STATE_SET:
+		if (get_user(g_sthal_state, (u32 __user *)argp))
+			return -EFAULT;
+		pr_info("STHAL_STATE_SET:%d\n", g_sthal_state);
+		break;
+	case AUDIO_PIPE_STHAL_STATE_GET:
+		pr_info("BTHAL_STATE_GET:%d\n", g_sthal_state);
+		if (put_user(g_sthal_state, (u32 __user *)argp))
 			return -EFAULT;
 		break;
 	default:
