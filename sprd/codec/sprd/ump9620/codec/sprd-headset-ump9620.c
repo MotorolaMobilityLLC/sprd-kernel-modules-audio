@@ -41,7 +41,9 @@
 #include "sprd-codec.h"
 #include "sprd-headset-ump9620.h"
 #include "sprd-asoc-card-utils.h"
-
+#ifdef CONFIG_SND_SOC_HEADSET_FSA4480
+#include "fsa4480-i2c.h"
+#endif
 #define HDST_DEBUG_LOG pr_debug("%s %d\n", __func__, __LINE__)
 
 #define LDETL_WAIT_INSERT_ALL_COMPL_MS 2000
@@ -1298,37 +1300,24 @@ sprd_headset_typec_mic_switch(struct sprd_headset *hdst)
 	struct sprd_headset_platform_data *pdata = &hdst->pdata;
 	int mic_gpio_level = 0;
 
-#if 0
+#ifdef CONFIG_SND_SOC_HEADSET_FSA4480
 	if (hdst->typec_i2c_en) {
-		static int (*typec_i2c_switch_event_function)(enum typec_i2c_function, bool need_delay);
-		typec_i2c_switch_event_function = (void *)kallsyms_lookup_name("typec_i2c_switch_event_enable");
-		while (!typec_i2c_switch_event_function && i2c_retry_count < 7) {
-			i2c_retry_count++;
-			sprd_msleep(500);
-			typec_i2c_switch_event_function =
-				(void *)kallsyms_lookup_name("typec_i2c_switch_event_enable");
-			pr_info("%s typec_i2c_switch_event_function is not prepare, retry count:%d \n",
-				__func__, i2c_retry_count);
-		}
-		if (typec_i2c_switch_event_function) {
-			pr_info("%s typec_i2c_switch_event_function\n", __func__);
+		pr_info("%s typec_i2c_switch_event_function\n", __func__);
 
-			sprd_headset_power_set(&hdst->power_manager, "HEADMICBIAS", false);
-			/* wait for power down */
-			sprd_msleep(20);
-			sprd_headset_typec_fast_discharging(true);
-			sprd_msleep(1);
-			typec_i2c_switch_event_function(TYPEC_I2C_MIC_GND_SWAP, false);
-			sprd_msleep(1);
-			sprd_headset_typec_fast_discharging(false);
-			sprd_headset_typec_headmicbias_ramp_on(hdst);
-			typec_i2c_switch_event_function(TYPEC_I2C_MIC_GND_SWAP, true);
-		} else
-			pr_info("%s typec_i2c_switch_event_function can not find\n",
-					__func__);
+		sprd_headset_power_set(&hdst->power_manager, "HEADMICBIAS", false);
+		/* wait for power down */
+		sprd_msleep(20);
+		sprd_headset_typec_fast_discharging(true);
+		sprd_msleep(1);
+		typec_i2c_switch_event_enable(0, false);
+		sprd_msleep(1);
+		sprd_headset_typec_fast_discharging(false);
+		sprd_headset_typec_headmicbias_ramp_on(hdst);
+		typec_i2c_switch_event_enable(0, true);
 		return;
 	}
 #endif
+
 	sprd_headset_power_set(&hdst->power_manager, "HEADMICBIAS", false);
 	/* wait for power down */
 	sprd_msleep(20);
@@ -2138,22 +2127,6 @@ static void headset_detect_all_work_func(struct work_struct *work)
 	}
 
 	if (hdst->plug_state_last == 0) {
-#if 0
-		if (hdst->typec_i2c_en) {
-			/*i2c switch need depop before headmicbias power on*/
-			static int (*typec_i2c_switch_depop_function)(void);
-
-			typec_i2c_switch_depop_function =
-				(void *)kallsyms_lookup_name("typec_i2c_switch_depop");
-			if (!typec_i2c_switch_depop_function) {
-				pr_info("%s function is not prepare or not need\n", __func__);
-			} else {
-				pr_info("%s function is prepare \n", __func__);
-				typec_i2c_switch_depop_function();
-				sprd_msleep(5);
-			}
-		}
-#endif
 		sprd_headset_set_hw_status(hdst, pdata);
 		sprd_msleep(10);
 	}

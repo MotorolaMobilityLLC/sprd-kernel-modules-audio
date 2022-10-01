@@ -19,6 +19,9 @@ KO_MODULE_OUT := $(BSP_MODULES_OUT)/$(KO_MODULE_NAME)
 KO_MODULE_KBUILD := $(CURDIR)/Kbuild
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/agdsp_pd/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-sprd-card/Module.symvers
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums9621_)
+export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-fsa4480/Module.symvers
+endif
 
 .PHONY: modules modules_install clean
 

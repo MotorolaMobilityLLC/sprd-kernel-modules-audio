@@ -102,14 +102,6 @@ enum {
 	JACK_TYPE_MAX
 };
 
-enum typec_i2c_function {
-	TYPEC_I2C_MIC_GND_SWAP,
-	TYPEC_I2C_USBC_ORIENTATION_CC1,
-	TYPEC_I2C_USBC_ORIENTATION_CC2,
-	TYPEC_I2C_USBC_DISPLAYPORT_DISCONNECTED,
-	TYPEC_I2C_EVENT_MAX,
-};
-
 struct sprd_headset_platform_data {
 	u32 gpio_switch;
 	u32 jack_type;
