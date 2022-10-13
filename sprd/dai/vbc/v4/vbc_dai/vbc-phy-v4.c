@@ -1349,36 +1349,54 @@ int dsp_vbc_mainmic_path_set(int type, int val)
 	return 0;
 }
 
-/* SND_KCTL_TYPE_USBOFFLOAD_RATE */
-int dsp_set_usboffload_rate(int rate)
+/* SND_KCTL_TYPE_USB_MCDT_PLAY */
+int dsp_usb_mcdt_play_set(int type, int sample, int format, int chan)
 {
-	int value;
 	int ret;
+	struct usb_mcdt_play_t usb_mcdt_play;
 
-	value = rate;
-	ret = aud_send_cmd(AMSG_CH_VBC_CTL, SND_KCTL_TYPE_USBOFFLOAD_RATE,
-		value, SND_VBC_DSP_IO_KCTL_SET,
-		&value, sizeof(value), AUDIO_SIPC_WAIT_FOREVER);
+	usb_mcdt_play.type = type;
+	usb_mcdt_play.sample = sample;
+	usb_mcdt_play.format = format;
+	usb_mcdt_play.chan = chan;
+
+	pr_info("%s usb_mcdt_play: type = %d, sample = %d, format = %d, chan = %d",
+		__func__, type, sample, format, chan);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+		SND_KCTL_TYPE_USB_MCDT_PLAY_SET,
+		-1, SND_VBC_DSP_IO_KCTL_SET, &usb_mcdt_play,
+		sizeof(usb_mcdt_play),
+		AUDIO_SIPC_WAIT_FOREVER);
 	if (ret < 0)
-		pr_err("%s, Failed to set, ret: %d\n", __func__, ret);
+		pr_err("Failed to set usb_mcdt_play, ret %d\n", ret);
 
-	return 0;
+	return ret;
 }
 
-/* SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT */
-int dsp_set_usboffload_samplebit(int samplebit)
+/* SND_KCTL_TYPE_USB_MCDT_CAP */
+int dsp_usb_mcdt_cap_set(int type, int sample, int format, int chan)
 {
 	int ret;
-	int usb_offload_samplebit = samplebit;
-	pr_info("%s samplebit = %d", __func__, samplebit);
+	struct usb_mcdt_cap_t usb_mcdt_cap;
 
-	ret = aud_send_cmd(AMSG_CH_VBC_CTL, SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT,
-		-1, SND_VBC_DSP_IO_KCTL_SET,
-		&usb_offload_samplebit, sizeof(usb_offload_samplebit), AUDIO_SIPC_WAIT_FOREVER);
+	usb_mcdt_cap.type = type;
+	usb_mcdt_cap.sample = sample;
+	usb_mcdt_cap.format = format;
+	usb_mcdt_cap.chan = chan;
+
+	pr_info("%s usb_mcdt_cap.type = %d, sample = %d, format = %d, chan = %d",
+		__func__, type, sample, format, chan);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+		SND_KCTL_TYPE_USB_MCDT_CAP_SET,
+		-1, SND_VBC_DSP_IO_KCTL_SET, &usb_mcdt_cap,
+		sizeof(usb_mcdt_cap),
+		AUDIO_SIPC_WAIT_FOREVER);
 	if (ret < 0)
-		pr_err("%s, Failed to set, ret: %d\n", __func__, ret);
+		pr_err("Failed to set usb_mcdt_cap, ret %d\n", ret);
 
-	return 0;
+	return ret;
 }
 
 /* SND_KCTL_TYPE_USB_MCDT_OUT_DEVICE */
@@ -1409,6 +1427,23 @@ void dsp_usb_mcdt_in_device_set(u32 dev_flag)
 			   AUDIO_SIPC_WAIT_FOREVER);
 	if (ret < 0)
 		pr_warn("Failed to set usb_in_dev_flag, ret %d\n", ret);
+}
+
+/* SND_KCTL_TYPE_USB_MCDT_MOUDLE_EN */
+void dsp_usb_mcdt_moudle_en_set(u32 value)
+{
+	int ret;
+	u32 usb_mcdt_moudle_flag = value;
+
+	pr_info("%s usb_mcdt_moudle_flag = %d", __func__, value);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+			   SND_KCTL_TYPE_USB_MCDT_MOUDLE_EN,
+			   -1, SND_VBC_DSP_IO_KCTL_SET,
+			   &usb_mcdt_moudle_flag, sizeof(usb_mcdt_moudle_flag),
+			   AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_warn("Failed to set usb_mcdt_moudle_flag, ret %d\n", ret);
 }
 
 /* SND_KCTL_TYPE_IVSENCE_FUNC */

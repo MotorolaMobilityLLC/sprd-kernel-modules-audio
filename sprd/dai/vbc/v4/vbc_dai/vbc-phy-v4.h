@@ -281,6 +281,7 @@ BIT(3) | BIT(4) | BIT(5) | BIT(6)))
 #define DEFAULT_RATE 48000
 #define STREAM_CNT 2
 
+
 enum {
 	VBC_LEFT = 0,
 	VBC_RIGHT = 1,
@@ -592,10 +593,11 @@ enum KCTL_TYPE {
 	SND_KCTL_TYPE_AUDIO_ZOOM_RATIO,
 	SND_KCTL_TYPE_AUDIO_ZOOM_FOCUS,
 	SND_KCTL_TYPE_DSP_DAC0_LR_EXCHANGE,
-	SND_KCTL_TYPE_USBOFFLOAD_RATE = 0x40,
-	SND_KCTL_TYPE_USBOFFLOAD_SAMPLEBIT,
+	SND_KCTL_TYPE_USB_MCDT_PLAY_SET = 0x40,
+	SND_KCTL_TYPE_USB_MCDT_CAP_SET,
 	SND_KCTL_TYPE_USB_MCDT_OUT_DEVICE,
 	SND_KCTL_TYPE_USB_MCDT_IN_DEVICE,
+	SND_KCTL_TYPE_USB_MCDT_MOUDLE_EN,
 	SND_KCTL_TYPE_END,
 };
 
@@ -1228,6 +1230,34 @@ struct audio_zoom_focus_t {
 	int height;
 };
 
+/* SND_KCTL_TYPE_USB_MCDT_PLAY_SET */
+enum USB_HEADSET_TYPE {
+	USB_HEADSET_TYPE_SYNC,
+	USB_HEADSET_TYPE_ASYNC,
+	USB_HEADSET_TYPE_ADAPTIVE,
+};
+
+enum USB_HEADSET_FORMAT {
+	BIT_16,
+	BIT_24,
+};
+
+/* SND_KCTL_TYPE_USB_MCDT_PLAY_SET */
+struct usb_mcdt_play_t {
+	enum USB_HEADSET_TYPE type;
+	int sample;
+	enum USB_HEADSET_FORMAT format;
+	int chan;
+};
+
+/* SND_KCTL_TYPE_USB_MCDT_CAP_SET */
+struct usb_mcdt_cap_t {
+	enum USB_HEADSET_TYPE type;
+	int sample;
+	enum USB_HEADSET_FORMAT format;
+	int chan;
+};
+
 /**********************************************************************
  * define for SND_VBC_DSP_IO_SHAREMEM_GET / SND_VBC_DSP_IO_SHAREMEM_SET
  **********************************************************************/
@@ -1475,6 +1505,11 @@ struct vbc_dev_para {
 	int val1;
 };
 
+struct usb_scene_data_s {
+	struct mutex lock_usb_en[STREAM_CNT];
+	int ref_usb_en[STREAM_CNT];
+};
+
 #define SBC_PARA_BYTES 64
 struct vbc_codec_priv {
 	struct snd_soc_component *codec;
@@ -1554,12 +1589,12 @@ struct vbc_codec_priv {
 	enum VBC_DEVICE_TYPE cust_dev;
 	enum VBC_DEVICE_TYPE sys_dev;
 	u16 cust_vol;
-	int usb_mcdt_start;
-	int usb_mcdt_stop;
-	int usb_offload_rate;
-	int usb_offload_samplebit;
+	struct usb_mcdt_play_t usb_mcdt_play;
+	struct usb_mcdt_cap_t usb_mcdt_cap;
 	u32 usb_mcdt_out_device;
 	u32 usb_mcdt_in_device;
+	int usb_mcdt_moudle_en;
+	struct usb_scene_data_s usb_scene_data;
 	u32 audio_zoom_st;
 	int audio_zoom_ratio;
 	struct audio_zoom_focus_t audio_zoom_focus;
@@ -1567,8 +1602,10 @@ struct vbc_codec_priv {
 
 /* BE_DAI_ID_USB_MCDT: use MCDT_CHAN3 adc path */
 #define MCDT_CHAN_USB_MCDT_PLAY MCDT_CHAN3
+#define USB_MCDT_PLAY_FULL_WM 48
 /* BE_DAI_ID_USB_MCDT: use MCDT_CHAN10 dac path */
 #define MCDT_CHAN_USB_MCDT_CAP MCDT_CHAN10
+#define USB_MCDT_CAP_EMPTY_WM 384
 
 /********************************************************************
  * ap phy define interface
@@ -1641,10 +1678,11 @@ void dsp_vbc_iis_master_width_set(u32 iis_width);
 int dsp_vbc_mainmic_path_set(int type, int val);
 int dsp_ivsence_func(int enable, int iv_adc_id);
 int dsp_vbc_voice_pcm_play_set(bool enable, int mode);
-int dsp_set_usboffload_rate(int rate);
-int dsp_set_usboffload_samplebit(int samplebit);
+int dsp_usb_mcdt_play_set(int type, int sample, int format, int chan);
+int dsp_usb_mcdt_cap_set(int type, int sample, int format, int chan);
 void dsp_usb_mcdt_out_device_set(u32 dev_flag);
 void dsp_usb_mcdt_in_device_set(u32 dev_flag);
+void dsp_usb_mcdt_moudle_en_set(u32 value);
 
 int vbc_dsp_func_startup(int scene_id, int stream,
 	struct sprd_vbc_stream_startup_shutdown *startup_info);
