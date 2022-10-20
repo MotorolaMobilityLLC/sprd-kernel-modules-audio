@@ -28,14 +28,19 @@
 #include "usbaudio.h"
 #include "card.h"
 
+#define TO_STRING(e) #e
+
+enum usb_aud_type {
+	USB_AUD_TYPE_SYNC,
+	USB_AUD_TYPE_ADAPTIVE,
+	USB_AUD_TYPE_ASYNC,
+	USB_AUD_TYPE_MAX,
+};
+
 struct snd_usb_vendor_audio {
 	int usb_aud_ofld_en[SNDRV_PCM_STREAM_LAST + 1];
 	int usb_aud_should_suspend;
-};
-
-enum {
-	USB_AUD_IIS_WIDTH_16,
-	USB_AUD_IIS_WIDTH_24,
+	enum usb_aud_type usb_aud_type[SNDRV_PCM_STREAM_LAST + 1];
 };
 
 static struct snd_usb_vendor_audio vendor_audio;
@@ -45,11 +50,18 @@ int snd_vendor_audio_offload(int stream)
 	return vendor_audio.usb_aud_ofld_en[stream];
 }
 
+static const char *const usb_aud_type_txt[] = {
+	[USB_AUD_TYPE_SYNC] = TO_STRING(USB_AUD_TYPE_SYNC),
+	[USB_AUD_TYPE_ADAPTIVE] = TO_STRING(USB_AUD_TYPE_ADAPTIVE),
+	[USB_AUD_TYPE_ASYNC] = TO_STRING(USB_AUD_TYPE_ASYNC),
+};
+
+static const struct soc_enum usb_sync_type_enum = SOC_ENUM_SINGLE_EXT(3, usb_aud_type_txt);
+
 /*
  * @return: 0 not offload mod, 1 offload mod
  */
-static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip,
-	int stream)
+static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip, int stream)
 {
 	int is_offload_mod = 0;
 
@@ -58,9 +70,8 @@ static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip,
 		pr_err("%s invalid stream %d\n", __func__, stream);
 		return is_offload_mod;
 	}
-
 	if (!chip) {
-		pr_err("%s chip is null stream =%d\n", __func__, stream);
+		pr_err("%s chip is null stream = %d\n", __func__, stream);
 		return is_offload_mod;
 	}
 	if (snd_vendor_audio_offload(stream))
@@ -68,8 +79,8 @@ static int sprd_usb_audio_offload_check(struct snd_usb_audio *chip,
 	else
 		is_offload_mod = 0;
 
-	pr_info("%s usb stream=%s, enter offload mode %d\n", __func__,
-		stream ? "capture" : "playback", snd_vendor_audio_offload(stream));
+	pr_info("%s usb stream = %s, enter offload mode %s\n", __func__,
+		stream ? "capture" : "playback", snd_vendor_audio_offload(stream) ? "true" : "false");
 
 	return is_offload_mod;
 }
@@ -79,72 +90,42 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 {
 	struct snd_usb_endpoint *ep = (struct snd_usb_endpoint *)arg;
 	struct usb_hcd *hcd;
-	int is_mono = 0;
-	int is_pcm_24bit = 0;
 	int is_offload_mod;
-	int iis_width;
-	int ofld_rate;
 	int stream;
+	int usb_sync_type;
 
 	if (ep) {
 		stream = usb_pipein(ep->pipe) ? SNDRV_PCM_STREAM_CAPTURE : SNDRV_PCM_STREAM_PLAYBACK;
-		iis_width = USB_AUD_IIS_WIDTH_24;
-		ofld_rate = 48;
+		usb_sync_type = ep->cur_audiofmt->ep_attr & USB_ENDPOINT_SYNCTYPE;
 
-		switch (ep->cur_channels) {
-		case 2:
-			is_mono = false;
+		pr_info("%s: EP 0x%x action = %s, sync_type = 0x%x\n",
+			__func__, ep->ep_num, action ? "start" : "stop", usb_sync_type);
+
+		switch (usb_sync_type) {
+		case USB_ENDPOINT_SYNC_SYNC:
+			vendor_audio.usb_aud_type[stream] = USB_AUD_TYPE_SYNC;
 			break;
-		case 1:
-			is_mono = true;
+		case USB_ENDPOINT_SYNC_ADAPTIVE:
+			vendor_audio.usb_aud_type[stream] = USB_AUD_TYPE_ADAPTIVE;
+			break;
+		case USB_ENDPOINT_SYNC_ASYNC:
+			vendor_audio.usb_aud_type[stream] = USB_AUD_TYPE_ASYNC;
 			break;
 		default:
-			is_mono = false;
-			pr_err("%s invalid channel %d\n", __func__, ep->cur_channels);
-			break;
+			pr_err("%s unkown usb sync_type: 0x%x!\n", __func__, usb_sync_type);
 		}
-
-		switch (ep->cur_format) {
-		case SNDRV_PCM_FORMAT_S16_LE:
-			is_pcm_24bit = 0;
-			break;
-		case SNDRV_PCM_FORMAT_S24_LE:
-			is_pcm_24bit = 1;
-			break;
-		default:
-			is_pcm_24bit = 0;
-			pr_err("%s unknown pcm format %d\n", __func__, ep->cur_format);
-			break;
-		}
-
-		pr_info("%s channels = %d, %s, %s, ep action = %s",
-			__func__, ep->cur_channels, is_mono ? "is mono" : "is stereo",
-			is_pcm_24bit ? "pcm 24" : "pcm 16bit", action ? "start" : "stop");
 
 		is_offload_mod = sprd_usb_audio_offload_check(ep->chip, stream);
-
 		if (is_offload_mod) {
-
 			hcd = bus_to_hcd(ep->chip->dev->bus);
-
 			if (!hcd->driver) {
 				pr_err("%s hcd driver or usb_aud_config is null\n", __func__);
 				return;
 			}
-			if (action) {
-				pr_info("%s usb enter offload mode config usb i2s %s, %s, %s, %s\n",
-					__func__, stream ? "capture" : "playback",
-					is_mono ? "mono" : "stereo",
-					is_pcm_24bit ? "data 24bit" : "data 16bit",
-					iis_width == USB_AUD_IIS_WIDTH_24 ?
-					"iis width 24bit" : "iis width 16bit");
-				musb_adaptive_config(hcd, ep->ep_num, is_mono,
-					is_pcm_24bit, iis_width, 48, is_offload_mod);
-			} else {
-				pr_info("%s close offload mode\n", __func__);
-				musb_adaptive_config(hcd, ep->ep_num, is_mono,
-					is_pcm_24bit, iis_width, 48, 0);
-			}
+			pr_info("%s %s adaptive mode, stream = %s, USB_AUD_TYPE = %s\n",
+				__func__, action ? "enter" : "exit", stream ? "capture" : "playback",
+				usb_aud_type_txt[vendor_audio.usb_aud_type[stream]]);
+			musb_adaptive_config(hcd, ep->ep_num, 0, 0, 0, 48, action);
 		}
 	}
 }
@@ -253,6 +234,20 @@ static int sprd_usb_should_suspend_put(struct snd_kcontrol *kcontrol,
 }
 
 
+static int sprd_usb_playback_type_get(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = vendor_audio.usb_aud_type[SNDRV_PCM_STREAM_PLAYBACK];
+	return 0;
+}
+
+static int sprd_usb_capture_type_get(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = vendor_audio.usb_aud_type[SNDRV_PCM_STREAM_CAPTURE];
+	return 0;
+}
+
 static struct snd_kcontrol_new sprd_controls[] = {
 	SOC_SINGLE_EXT("USB_AUD_OFLD_P_EN", SND_SOC_NOPM,
 		SNDRV_PCM_STREAM_PLAYBACK, 1, 0,
@@ -265,6 +260,10 @@ static struct snd_kcontrol_new sprd_controls[] = {
 	SOC_SINGLE_EXT("USB_AUD_SHOULD_SUSPEND", SND_SOC_NOPM, 0, 1, 0,
 		       sprd_usb_should_suspend_get,
 		       sprd_usb_should_suspend_put),
+	SOC_ENUM_EXT("USB_AUD_PLAYBACK_TYPE", usb_sync_type_enum,
+  		sprd_usb_playback_type_get, NULL),
+	SOC_ENUM_EXT("USB_AUD_CAPTURE_TYPE", usb_sync_type_enum,
+  		sprd_usb_capture_type_get, NULL),
 	{},
 };
 
@@ -310,7 +309,7 @@ static int sprd_usb_aud_ofld_en(struct snd_usb_audio *chip, int stream)
 	}
 
 	if (!chip) {
-		pr_err("%s chip is null stream =%d\n", __func__, stream);
+		pr_err("%s chip is null stream %d\n", __func__, stream);
 		return 0;
 	}
 
@@ -321,11 +320,11 @@ static int sprd_ofld_synctype_ignore(struct snd_usb_audio *chip,
 	int stream, int attr)
 {
 	if (!sprd_usb_aud_ofld_en(chip, stream)) {
-		pr_info("not enable usb audio offload, can't ignore\n");
+		pr_debug("not enable usb audio offload, can't ignore\n");
 		return 0;
 	}
 	if (attr != USB_ENDPOINT_SYNC_SYNC) {
-		pr_info("offload ignore synctype stream %s sync_type %d\n",
+		pr_debug("offload ignore synctype stream %s sync_type %d\n",
 			stream ? "capture" : "playback", attr);
 		return 0;
 	}
