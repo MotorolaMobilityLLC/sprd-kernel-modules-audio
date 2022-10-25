@@ -5565,6 +5565,15 @@ static inline void vbc_proc_init(struct snd_soc_component *codec)
 }
 #endif
 
+static void init_usb_play_cap_lock(struct vbc_codec_priv *vbc_codec)
+{
+	int i = 0;
+
+	for (i = 0; i < STREAM_CNT; i++) {
+		mutex_init(&vbc_codec->usb_scene_data.lock_usb_en[i]);
+	}
+}
+
 static int vbc_codec_soc_probe(struct snd_soc_component *codec)
 {
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
@@ -5725,6 +5734,7 @@ int sprd_vbc_codec_probe(struct platform_device *pdev)
 		of_property_read_bool(np, "sprd,need-aud-top-clk");
 	mutex_init(&vbc_codec->load_mutex);
 	mutex_init(&vbc_codec->agcp_access_mutex);
+	init_usb_play_cap_lock(vbc_codec);
 
 	return 0;
 }
@@ -7009,6 +7019,28 @@ void trigger_unlock_spin(int scene_id, int stream)
 		scene_id_to_str(scene_id), stream_to_str(stream));
 }
 
+void usb_play_lock_mtx(struct vbc_codec_priv *vbc_codec, int stream)
+{
+	mutex_lock(&vbc_codec->usb_scene_data.lock_usb_en[USB_PLAY_STREAM]);
+	pr_debug("%s %s\n", __func__, stream_to_str(stream));
+}
+void usb_play_unlock_mtx(struct vbc_codec_priv *vbc_codec, int stream)
+{
+	mutex_unlock(&vbc_codec->usb_scene_data.lock_usb_en[USB_PLAY_STREAM]);
+	pr_debug("%s %s\n", __func__, stream_to_str(stream));
+}
+
+void usb_cap_lock_mtx(struct vbc_codec_priv *vbc_codec, int stream)
+{
+	mutex_lock(&vbc_codec->usb_scene_data.lock_usb_en[USB_CAP_STREAM]);
+	pr_debug("%s %s\n", __func__, stream_to_str(stream));
+}
+void usb_cap_unlock_mtx(struct vbc_codec_priv *vbc_codec, int stream)
+{
+	mutex_unlock(&vbc_codec->usb_scene_data.lock_usb_en[USB_CAP_STREAM]);
+	pr_debug("%s %s\n", __func__, stream_to_str(stream));
+}
+
 void startup_add_ref(int scene_id, int stream)
 {
 	struct scene_data_s *scene_data;
@@ -7118,24 +7150,24 @@ void usb_play_add_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref;
 
-	ref = ++vbc_codec->usb_scene_data.ref_usb_en[0];
-	pr_info("%s ref=%d\n", __func__, ref);
+	ref = ++vbc_codec->usb_scene_data.ref_usb_en[USB_PLAY_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 }
 void usb_play_dec_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref = 0;
 
-	if (vbc_codec->usb_scene_data.ref_usb_en[0] > 0)
-		ref = --vbc_codec->usb_scene_data.ref_usb_en[0];
-	pr_info("%s ref=%d\n", __func__, ref);
+	if (vbc_codec->usb_scene_data.ref_usb_en[USB_PLAY_STREAM] > 0)
+		ref = --vbc_codec->usb_scene_data.ref_usb_en[USB_PLAY_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 }
 
 int usb_play_get_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref;
 
-	ref = vbc_codec->usb_scene_data.ref_usb_en[0];
-	pr_info("%s ref=%d\n", __func__, ref);
+	ref = vbc_codec->usb_scene_data.ref_usb_en[USB_PLAY_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 
 	return ref;
 }
@@ -7144,24 +7176,24 @@ void usb_cap_add_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref;
 
-	ref = ++vbc_codec->usb_scene_data.ref_usb_en[1];
-	pr_info("%s ref=%d\n", __func__, ref);
+	ref = ++vbc_codec->usb_scene_data.ref_usb_en[USB_CAP_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 }
 void usb_cap_dec_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref = 0;
 
-	if (vbc_codec->usb_scene_data.ref_usb_en[1] > 0)
-		ref = --vbc_codec->usb_scene_data.ref_usb_en[1];
-	pr_info("%s ref=%d\n", __func__, ref);
+	if (vbc_codec->usb_scene_data.ref_usb_en[USB_CAP_STREAM] > 0)
+		ref = --vbc_codec->usb_scene_data.ref_usb_en[USB_CAP_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 }
 
 int usb_cap_get_ref(struct vbc_codec_priv *vbc_codec, int stream)
 {
 	int ref;
 
-	ref = vbc_codec->usb_scene_data.ref_usb_en[1];
-	pr_info("%s ref=%d\n", __func__, ref);
+	ref = vbc_codec->usb_scene_data.ref_usb_en[USB_CAP_STREAM];
+	pr_info("%s %s ref=%d\n", __func__, stream_to_str(stream), ref);
 
 	return ref;
 }
@@ -7402,14 +7434,18 @@ static int scene_normal_startup(struct snd_pcm_substream *substream,
 	}
 	if (be_dai_id == BE_DAI_ID_NORMAL_AP01_USB_MCDT ||
 		be_dai_id == BE_DAI_ID_NORMAL_AP23_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_add_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 	return ret;
@@ -7438,14 +7474,18 @@ static void scene_normal_shutdown(struct snd_pcm_substream *substream,
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_NORMAL_AP01_USB_MCDT ||
 		be_dai_id == BE_DAI_ID_NORMAL_AP23_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_dec_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -7953,10 +7993,12 @@ static int scene_capture_dsp_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if(be_dai_id == BE_DAI_ID_CAPTURE_DSP_USB_MCDT) {
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_add_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -7983,10 +8025,12 @@ static void scene_capture_dsp_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_CAPTURE_DSP_USB_MCDT) {
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_dec_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -8334,10 +8378,12 @@ static int scene_fast_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_FAST_P_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -8364,10 +8410,12 @@ static void scene_fast_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FAST_P_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -8526,10 +8574,12 @@ static int scene_offload_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_OFFLOAD_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -8556,10 +8606,12 @@ static void scene_offload_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_OFFLOAD_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -9057,14 +9109,18 @@ static int scene_voice_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_VOICE_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_add_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -9091,14 +9147,18 @@ static void scene_voice_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_VOICE_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_dec_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -9611,13 +9671,21 @@ static int scene_voip_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_VOIP_USB_MCDT) {
-		usb_play_add_ref(vbc_codec, stream);
-		if (usb_play_get_ref(vbc_codec, stream) ==1) {
-			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
+		if (stream == USB_PLAY_STREAM) {
+			usb_play_lock_mtx(vbc_codec, stream);
+			usb_play_add_ref(vbc_codec, stream);
+			if (usb_play_get_ref(vbc_codec, stream) ==1) {
+				mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
+			}
+			usb_play_unlock_mtx(vbc_codec, stream);
 		}
-		usb_cap_add_ref(vbc_codec, stream);
-		if (usb_cap_get_ref(vbc_codec, stream) ==1) {
-			mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
+		else {
+			usb_cap_lock_mtx(vbc_codec, stream);
+			usb_cap_add_ref(vbc_codec, stream);
+			if (usb_cap_get_ref(vbc_codec, stream) ==1) {
+				mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
+			}
+			usb_cap_unlock_mtx(vbc_codec, stream);
 		}
 	}
 	startup_unlock_mtx(scene_id, stream);
@@ -9645,13 +9713,21 @@ static void scene_voip_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_VOIP_USB_MCDT) {
-		usb_play_dec_ref(vbc_codec, stream);
-		if (usb_play_get_ref(vbc_codec, stream) == 0) {
-			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
+		if (stream == USB_PLAY_STREAM) {
+			usb_play_lock_mtx(vbc_codec, stream);
+			usb_play_dec_ref(vbc_codec, stream);
+			if (usb_play_get_ref(vbc_codec, stream) == 0) {
+				mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
+			}
+			usb_play_unlock_mtx(vbc_codec, stream);
 		}
-		usb_cap_dec_ref(vbc_codec, stream);
-		if (usb_cap_get_ref(vbc_codec, stream) == 0) {
-			mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
+		else {
+			usb_cap_lock_mtx(vbc_codec, stream);
+			usb_cap_dec_ref(vbc_codec, stream);
+			if (usb_cap_get_ref(vbc_codec, stream) == 0) {
+				mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
+			}
+			usb_cap_unlock_mtx(vbc_codec, stream);
 		}
 	}
 	startup_dec_ref(scene_id, stream);
@@ -9808,14 +9884,18 @@ static int scene_loop_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_LOOP_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_add_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_send_data_to_dsp(MCDT_CHAN_USB_MCDT_CAP, USB_MCDT_CAP_EMPTY_WM);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -9842,14 +9922,18 @@ static void scene_loop_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_LOOP_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
+		usb_cap_lock_mtx(vbc_codec, stream);
 		usb_cap_dec_ref(vbc_codec, stream);
 		if (usb_cap_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_send_disable(MCDT_CHAN_USB_MCDT_CAP);
 		}
+		usb_cap_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -10006,10 +10090,12 @@ static int scene_fm_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_FM_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -10036,10 +10122,12 @@ static void scene_fm_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FM_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {
@@ -10939,10 +11027,12 @@ static int scene_fm_dsp_startup(struct snd_pcm_substream *substream,
 			set_scene_flag(scene_id, stream);
 	}
 	if (be_dai_id == BE_DAI_ID_FM_DSP_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_add_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) ==1) {
 			mcdt_usb_rev_data_from_dsp(MCDT_CHAN_USB_MCDT_PLAY, USB_MCDT_PLAY_FULL_WM);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_unlock_mtx(scene_id, stream);
 
@@ -10969,10 +11059,12 @@ static void scene_fm_dsp_shutdown(struct snd_pcm_substream *substream,
 		return;
 	startup_lock_mtx(scene_id, stream);
 	if (be_dai_id == BE_DAI_ID_FM_DSP_USB_MCDT) {
+		usb_play_lock_mtx(vbc_codec, stream);
 		usb_play_dec_ref(vbc_codec, stream);
 		if (usb_play_get_ref(vbc_codec, stream) == 0) {
 			mcdt_usb_rev_disable(MCDT_CHAN_USB_MCDT_PLAY);
 		}
+		usb_play_unlock_mtx(vbc_codec, stream);
 	}
 	startup_dec_ref(scene_id, stream);
 	if (startup_get_ref(scene_id, stream) == 0) {

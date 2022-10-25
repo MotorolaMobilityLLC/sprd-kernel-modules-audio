@@ -280,7 +280,8 @@ BIT(3) | BIT(4) | BIT(5) | BIT(6)))
 
 #define DEFAULT_RATE 48000
 #define STREAM_CNT 2
-
+#define USB_PLAY_STREAM 0
+#define USB_CAP_STREAM 1
 
 enum {
 	VBC_LEFT = 0,
