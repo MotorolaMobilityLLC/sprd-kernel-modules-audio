@@ -159,7 +159,9 @@ static ssize_t apipe_read(struct file *filp,
 			(struct kfifo_rec_ptr_2 *)&apipe_dev->kf;
 
 	if (filp->f_flags & O_NONBLOCK) {
+		mutex_lock(&apipe_dev->mutex);
 		ret = kfifo_to_user(kfifo, buf, count, &copied);
+		mutex_unlock(&apipe_dev->mutex);
 		if (ret < 0)
 			return ret;
 		wake_up_interruptible_all(&apipe_dev->wwait);
@@ -167,7 +169,9 @@ static ssize_t apipe_read(struct file *filp,
 	}
 
 	while (1) {
+		mutex_lock(&apipe_dev->mutex);
 		ret = kfifo_to_user(kfifo, buf, count, &copied);
+		mutex_unlock(&apipe_dev->mutex);
 		if (!ret && copied)
 			wake_up_interruptible_all(&apipe_dev->wwait);
 		if (apipe_dev->force_wakeup_r || (!ret && copied)) {
@@ -201,7 +205,9 @@ static ssize_t apipe_write(struct file *filp,
 			(struct kfifo_rec_ptr_2 *)&apipe_dev->kf;
 
 	if (filp->f_flags & O_NONBLOCK) {
+		mutex_lock(&apipe_dev->mutex);
 		ret = kfifo_from_user(kfifo, buf, count, &copied);
+		mutex_unlock(&apipe_dev->mutex);
 		if (ret < 0)
 			return ret;
 		wake_up_interruptible_all(&apipe_dev->rwait);
@@ -212,7 +218,9 @@ static ssize_t apipe_write(struct file *filp,
 			apipe_dev->force_wakeup_w = false;
 			break;
 		}
+		mutex_lock(&apipe_dev->mutex);
 		ret = kfifo_from_user(kfifo, buf, count, &copied);
+		mutex_unlock(&apipe_dev->mutex);
 		if (!ret && copied) {
 			wake_up_interruptible_all(&apipe_dev->rwait);
 			return copied;
