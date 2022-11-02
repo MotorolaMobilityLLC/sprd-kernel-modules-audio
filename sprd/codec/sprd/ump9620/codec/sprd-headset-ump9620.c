@@ -2127,6 +2127,13 @@ static void headset_detect_all_work_func(struct work_struct *work)
 	}
 
 	if (hdst->plug_state_last == 0) {
+#ifdef CONFIG_SND_SOC_HEADSET_FSA4480
+		if (hdst->typec_i2c_en) {
+			/*i2c switch need depop before headmicbias power on*/
+			typec_i2c_switch_depop();
+			sprd_msleep(5);
+		}
+#endif
 		sprd_headset_set_hw_status(hdst, pdata);
 		sprd_msleep(10);
 	}
