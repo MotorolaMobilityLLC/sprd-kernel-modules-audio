@@ -3160,6 +3160,47 @@ profile_out:
 	return ret;
 }
 
+static int vbc_turning_profile_get(u8 *profile_data, size_t profile_size, struct snd_soc_component *codec, int profile_id)
+{
+	u8 *fw_data;
+	int offset = 0;
+	size_t len = 0;
+	int ret = 0;
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+	struct vbc_profile *p_profile_setting = &vbc_codec->vbc_profile_setting;
+
+	fw_data = profile_data;
+	if (profile_size <= sizeof(p_profile_setting->hdr[profile_id])) {
+		unalign_memcpy(fw_data, &p_profile_setting->hdr[profile_id], profile_size);
+		pr_info("%s, only get profile %s party header! size=%d\n", __func__, vbc_get_profile_name(profile_id), profile_size);
+		return profile_size;
+	} else {
+		unalign_memcpy(fw_data, &p_profile_setting->hdr[profile_id],
+					sizeof(p_profile_setting->hdr[profile_id]));
+
+		offset = sizeof(struct vbc_fw_header);
+		len = (size_t)(p_profile_setting->hdr[profile_id].num_mode) * p_profile_setting->hdr[profile_id].len_mode;
+		if (p_profile_setting->data[profile_id] != NULL) {
+			if (profile_size - offset >= len) {
+				unalign_memcpy(fw_data + offset, p_profile_setting->data[profile_id], len);
+				pr_info("%s, get profile %s full header and data! header=%d, data=%d, require size %d\n",
+					__func__, vbc_get_profile_name(profile_id), offset, len, profile_size);
+				return offset + len;
+			} else {
+				unalign_memcpy(fw_data + offset, p_profile_setting->data[profile_id], profile_size - offset);
+				pr_info("%s, get profile %s header and party data! header=%d, data=%d, data size %d\n",
+					__func__, vbc_get_profile_name(profile_id), offset, profile_size - offset, len);
+				return profile_size;
+			}
+		} else {
+			pr_err("%s, profile %s data is NULL!\n", __func__, vbc_get_profile_name(profile_id));
+			ret = -ENOMEM;
+		}
+	}
+
+	return ret;
+}
+
 static int vbc_turning_ndp_open(struct inode *inode, struct file *file)
 {
     pr_debug("%s: opened\n", __func__);
@@ -3211,6 +3252,50 @@ static ssize_t vbc_turning_ndp_write(struct file *file, const char __user *data_
 	return data_size;
 }
 
+static ssize_t vbc_turning_ndp_read(struct file *file, char __user *data_p, size_t data_size, loff_t *ppos, int profile_id)
+{
+	void *buf_p = NULL;
+	int ret = 0;
+
+	if (NULL == data_p) {
+		pr_err("%s, Error: data_p is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (0 == data_size) {
+		pr_err("%s, Error: size is 0\n", __func__);
+		return -EINVAL;
+	}
+
+	if (NULL == g_vbc_codec) {
+		pr_err("%s: Error: not find codec.\n", __func__);
+		return -ENODEV;
+	}
+
+	pr_info("%s, eq turning data_p = %p, size =%ld, profile id = %d\n", __func__, data_p, data_size, profile_id);
+	buf_p = vmalloc(data_size);
+	if (NULL == buf_p) {
+		pr_err("%s, Error: vmalloc eq data buffer failed, size is %ld\n", __func__, data_size);
+		return -ENOMEM;
+	}
+
+	ret = vbc_turning_profile_get((u8 *)buf_p, data_size, g_vbc_codec->codec, profile_id);
+	if (ret < 0) {
+		vfree(buf_p);
+		pr_err("%s: Error: get eq to upper layer failed, ret=%d.\n", __func__, ret);
+		return ret;
+	}
+
+	if (copy_to_user(data_p, buf_p, data_size)) {
+		pr_err("%s: Error: arg protection error\n", __func__);
+		vfree(buf_p);
+		return -EACCES;
+	}
+
+	vfree(buf_p);
+	pr_info("%s: get eq to upper layer success, size %d.\n", __func__, ret);
+	return ret;
+}
 
 static int vbc_turning_ndp_release(struct inode *inode, struct file *file)
 {
@@ -3239,6 +3324,25 @@ static ssize_t vbc_turning_SMARTPA_write(struct file *file, const char __user *d
 	return vbc_turning_ndp_write(file, data_p, data_size, ppos, SND_VBC_PROFILE_IVS_SMARTPA);
 }
 
+static ssize_t vbc_turning_structure_read(struct file *file, char __user *data_p, size_t data_size, loff_t *ppos)
+{
+	return vbc_turning_ndp_read(file, data_p, data_size, ppos, SND_VBC_PROFILE_AUDIO_STRUCTURE);
+}
+
+static ssize_t vbc_turning_DSP_read(struct file *file, char __user *data_p, size_t data_size, loff_t *ppos)
+{
+	return vbc_turning_ndp_read(file, data_p, data_size, ppos, SND_VBC_PROFILE_DSP);
+}
+
+static ssize_t vbc_turning_NXP_read(struct file *file, char __user *data_p, size_t data_size, loff_t *ppos)
+{
+	return vbc_turning_ndp_read(file, data_p, data_size, ppos, SND_VBC_PROFILE_NXP);
+}
+
+static ssize_t vbc_turning_SMARTPA_read(struct file *file, char __user *data_p, size_t data_size, loff_t *ppos)
+{
+	return vbc_turning_ndp_read(file, data_p, data_size, ppos, SND_VBC_PROFILE_IVS_SMARTPA);
+}
 
 static const struct file_operations audio_turning_fops[AUD_TURNING_PRO_CNTS] = {
     //SND_VBC_PROFILE_AUDIO_STRUCTURE
@@ -3246,6 +3350,7 @@ static const struct file_operations audio_turning_fops[AUD_TURNING_PRO_CNTS] = {
     .owner          = THIS_MODULE,
     .open           = vbc_turning_ndp_open,
     .write          = vbc_turning_structure_write,
+    .read           = vbc_turning_structure_read,
     .release        = vbc_turning_ndp_release,
     },
     //SND_VBC_PROFILE_DSP
@@ -3253,6 +3358,7 @@ static const struct file_operations audio_turning_fops[AUD_TURNING_PRO_CNTS] = {
     .owner          = THIS_MODULE,
     .open           = vbc_turning_ndp_open,
     .write          = vbc_turning_DSP_write,
+    .read           = vbc_turning_DSP_read,
     .release        = vbc_turning_ndp_release,
     },
     //SND_VBC_PROFILE_NXP
@@ -3260,6 +3366,7 @@ static const struct file_operations audio_turning_fops[AUD_TURNING_PRO_CNTS] = {
     .owner          = THIS_MODULE,
     .open           = vbc_turning_ndp_open,
     .write          = vbc_turning_NXP_write,
+    .read           = vbc_turning_NXP_read,
     .release        = vbc_turning_ndp_release,
     },
     //SND_VBC_PROFILE_IVS_SMARTPA
@@ -3267,6 +3374,7 @@ static const struct file_operations audio_turning_fops[AUD_TURNING_PRO_CNTS] = {
     .owner          = THIS_MODULE,
     .open           = vbc_turning_ndp_open,
     .write          = vbc_turning_SMARTPA_write,
+    .read           = vbc_turning_SMARTPA_read,
     .release        = vbc_turning_ndp_release,
     }
 };
