@@ -1446,6 +1446,23 @@ void dsp_usb_mcdt_moudle_en_set(u32 value)
 		pr_warn("Failed to set usb_mcdt_moudle_flag, ret %d\n", ret);
 }
 
+/* SND_KCTL_TYPE_CUR_OUT_DEVICE */
+void dsp_cur_out_device_set(u32 value)
+{
+	int ret;
+	u32 cur_out_device = value;
+
+	pr_info("%s device_sel = %d", __func__, value);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+			   SND_KCTL_TYPE_CUR_OUT_DEVICE,
+			   -1, SND_VBC_DSP_IO_KCTL_SET,
+			   &cur_out_device, sizeof(cur_out_device),
+			   AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_warn("Failed to set cur_out_device, ret %d\n", ret);
+}
+
 /* SND_KCTL_TYPE_IVSENCE_FUNC */
 int dsp_ivsence_func(int enable, int iv_adc_id)
 {

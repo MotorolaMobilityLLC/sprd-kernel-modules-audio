@@ -4758,6 +4758,32 @@ static int dsp_usb_mcdt_moudle_en_put(struct snd_kcontrol *kcontrol,
 	return value;
 }
 
+static int dsp_cur_out_device_get(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->cur_out_device;
+
+	return 0;
+}
+
+static int dsp_cur_out_device_put(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.integer.value[0];
+	sp_asoc_pr_dbg("%s, value=%d\n", __func__, value);
+	vbc_codec->cur_out_device = value;
+	dsp_cur_out_device_set(value);
+
+	return value;
+}
+
 static int dsp_hp_crosstalk_en_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -5474,6 +5500,10 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 		       dsp_usb_mcdt_in_device_put),
 	SOC_SINGLE_BOOL_EXT("DSP_USB_MCDT_MOUDLE_EN", 0,
 		dsp_usb_mcdt_moudle_en_get, dsp_usb_mcdt_moudle_en_put),
+	SOC_SINGLE_EXT("AUDIO_CUR_OUT_DEVICE",
+		       SND_SOC_NOPM, 0,
+		       MAX_32_BIT, 0,
+		       dsp_cur_out_device_get, dsp_cur_out_device_put),
 	SOC_SINGLE_BOOL_EXT("AUDIO_ZOOM_ST", 0,
 		dsp_audio_zoom_st_get, dsp_audio_zoom_st_put),
 	SOC_SINGLE_EXT("AUDIO_ZOOM_RATIO",

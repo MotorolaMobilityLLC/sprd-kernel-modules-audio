@@ -599,6 +599,7 @@ enum KCTL_TYPE {
 	SND_KCTL_TYPE_USB_MCDT_OUT_DEVICE,
 	SND_KCTL_TYPE_USB_MCDT_IN_DEVICE,
 	SND_KCTL_TYPE_USB_MCDT_MOUDLE_EN,
+	SND_KCTL_TYPE_CUR_OUT_DEVICE = 0x50,
 	SND_KCTL_TYPE_END,
 };
 
@@ -1596,6 +1597,7 @@ struct vbc_codec_priv {
 	u32 usb_mcdt_in_device;
 	int usb_mcdt_moudle_en;
 	struct usb_scene_data_s usb_scene_data;
+	int cur_out_device;
 	u32 audio_zoom_st;
 	int audio_zoom_ratio;
 	struct audio_zoom_focus_t audio_zoom_focus;
@@ -1685,6 +1687,7 @@ void dsp_usb_mcdt_out_device_set(u32 dev_flag);
 void dsp_usb_mcdt_in_device_set(u32 dev_flag);
 void dsp_usb_mcdt_moudle_en_set(u32 value);
 
+void dsp_cur_out_device_set(u32 value);
 int vbc_dsp_func_startup(int scene_id, int stream,
 	struct sprd_vbc_stream_startup_shutdown *startup_info);
 int vbc_dsp_func_shutdown(int scene_id, int stream,
