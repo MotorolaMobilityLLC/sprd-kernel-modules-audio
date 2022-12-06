@@ -619,8 +619,11 @@ static int dig_access_disable_put(struct snd_kcontrol *kcontrol,
 			sprd_codec->user_dig_access_dis = disable;
 			pm_runtime_mark_last_busy(codec->dev);
 			pm_runtime_put_autosuspend(codec->dev);
+			pm_runtime_mark_last_busy(codec->dev);
+			pm_runtime_put_autosuspend(codec->dev);
 		} else {
 			sp_asoc_pr_dbg("%s, enable agdsp access\n", __func__);
+			pm_runtime_get_sync(codec->dev);
 			if (pm_runtime_get_sync(codec->dev) < 0) {
 				dev_err(codec->dev, "%s, agdsp_access_enable failed!\n",
 				       __func__);
