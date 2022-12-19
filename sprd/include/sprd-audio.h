@@ -177,11 +177,11 @@ void arch_audio_set_anlg_phy_g(struct regmap *gpr);
 #elif defined(CONFIG_SOC_SHARKLJ1)
 /* sharklj1 */
 #include "sprd-audio-sharklj1.h"
-#elif (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
-#include "sprd-audio-sharkle.h"
+//#elif (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+//#include "sprd-audio-sharkle.h"
 /* pike2 */
-#elif (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
-#include "sprd-audio-pike2.h"
+//#elif (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+//#include "sprd-audio-pike2.h"
 /* sharkl3 */
 //#elif (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
 //#include "sprd-audio-sharkl3.h"
@@ -190,6 +190,7 @@ void arch_audio_set_anlg_phy_g(struct regmap *gpr);
 #endif
 
 #include "sprd-audio-common.h"
+
 
 struct glb_reg_dump {
 	char *reg_name;

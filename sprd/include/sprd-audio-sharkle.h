@@ -20,10 +20,7 @@
 #error  "Don't include this file directly, include sprd-audio.h"
 #endif
 
-#define CODEC_DP_BASE		(0x1000)
 #define VBC_BASE		(0x1000)
-#define CODEC_AP_BASE		(0x2000)
-#define CODEC_AP_OFFSET		(0)
 
 #define CODEC_DP_BASE_DEFAULT		0x40000000
 #define CODEC_DP_SIZE_DEFAULT		SZ_8K
@@ -32,13 +29,6 @@
 #define VBC_BASE_SIZE_DEFAULT		(SZ_4K + SZ_8K)
 
 #define VBC_PHY_BASE		0
-
-enum ag_iis {
-	AG_IIS0,
-	AG_IIS1,
-	AG_IIS2,
-	AG_IIS_MAX
-};
 
 enum {
 	VBC_NO_CHANGE,
@@ -125,10 +115,6 @@ enum {
 /* REG_AON_APB_VBC_CTRL */
 #define REG_AON_APB_VBC_CTRL                    (0x0020)
 
-/*AP_APB registers offset */
-#define REG_AP_APB_APB_EB                   (0x0000)
-#define REG_AP_APB_APB_RST                  (0x0004)
-
 /*PMU APB register offset*/
 #define REG_PMU_APB_XTLBUF1_REL_CFG                           (0x0090)
 #define REG_PMU_APB_SLEEP_XTLON_CTRL                          (0x0168)
@@ -151,12 +137,6 @@ enum {
 /* REG_AON_APB_APB_RST0 */
 #define BIT_AON_APB_AUD_SOFT_RST                      BIT(19)
 #define BIT_AON_APB_AUDIF_SOFT_RST                    BIT(18)
-
-/* REG_AP_APB_APB_EB */
-#define BIT_AP_APB_IIS0_EB                      BIT(1)
-
-/* REG_AP_APB_APB_RST */
-#define BIT_AP_APB_IIS0_SOFT_RST                BIT(1)
 
 /* REG_PMU_APB_XTLBUF1_REL_CFG */
 #define BIT_PMU_APB_XTLBUF1_WTLCP_SEL                           BIT(1)
@@ -479,63 +459,6 @@ static inline int arch_audio_codec_audif_disable(void)
 	return 0;
 }
 
-static inline int arch_audio_codec_digital_reg_enable(void)
-{
-	int ret;
-
-	aon_apb_gpr_null_check();
-	ret = aon_apb_reg_set(REG_AON_APB_APB_EB0, BIT_AON_APB_AUD_EB);
-	if (ret >= 0)
-		arch_audio_codec_audif_enable(0);
-
-	return ret;
-}
-
-static inline int arch_audio_codec_digital_reg_disable(void)
-{
-	aon_apb_gpr_null_check();
-	arch_audio_codec_audif_disable();
-	aon_apb_reg_clr(REG_AON_APB_APB_EB0, BIT_AON_APB_AUD_EB);
-
-	return 0;
-}
-
-static inline int arch_audio_codec_digital_enable(void)
-{
-	int ret;
-
-	ret = anlg_phy_g_null_check();
-	if (ret < 0) {
-		pr_err("%s failed\n", __func__);
-		return ret;
-	}
-	/* internal digital 26M enable */
-	ret = anlg_phy_g_reg_set(REG_ANLG_PHY_G6_ANALOG_BB_TOP_ANA_BB_SINE_CTRL,
-		BIT_ANLG_PHY_G6_ANALOG_BB_TOP_SINDRV_ENA);
-	if (ret != 0)
-		pr_err("%s set failed", __func__);
-
-	return ret;
-}
-
-static inline int arch_audio_codec_digital_disable(void)
-{
-	int ret;
-
-	ret = anlg_phy_g_null_check();
-	if (ret < 0) {
-		pr_err("%s failed\n", __func__);
-		return ret;
-	}
-	/* internal digital 26M disable */
-	ret = anlg_phy_g_reg_clr(REG_ANLG_PHY_G6_ANALOG_BB_TOP_ANA_BB_SINE_CTRL,
-		BIT_ANLG_PHY_G6_ANALOG_BB_TOP_SINDRV_ENA);
-	if (ret != 0)
-		pr_err("%s set failed", __func__);
-
-	return ret;
-}
-
 static inline int arch_audio_codec_switch(int master)
 {
 	int ret;
@@ -588,21 +511,6 @@ static inline int arch_audio_codec_switch(int master)
 	return ret;
 }
 
-static inline int arch_audio_codec_switch2ap(void)
-{
-	return arch_audio_codec_switch(ADU_DIGITAL_INT_TO_AP_CTRL);
-}
-
-static inline void arch_audio_codec_digital_reset(void)
-{
-	aon_apb_gpr_null_check();
-	aon_apb_reg_set(REG_AON_APB_APB_RST0, BIT_AON_APB_AUD_SOFT_RST);
-	aon_apb_reg_set(REG_AON_APB_APB_RST0, BIT_AON_APB_AUDIF_SOFT_RST);
-	udelay(10);
-	aon_apb_reg_clr(REG_AON_APB_APB_RST0, BIT_AON_APB_AUD_SOFT_RST);
-	aon_apb_reg_clr(REG_AON_APB_APB_RST0, BIT_AON_APB_AUDIF_SOFT_RST);
-}
-
 static inline void arch_audio_sleep_xtl_enable(void)
 {
 	pmu_apb_gpr_null_check();
@@ -615,140 +523,6 @@ static inline void arch_audio_sleep_xtl_disable(void)
 	pmu_apb_gpr_null_check();
 	pmu_apb_reg_clr(REG_PMU_APB_SLEEP_XTLON_CTRL,
 			BIT_PMU_APB_AP_SLEEP_XTL_ON);
-}
-
-/* vbc r1p0v3 and r2p0 have no such control. */
-static inline int arch_audio_iis_to_audio_top_enable(int iis, int en)
-{
-	return 0;
-}
-
-/* i2s setting */
-static inline const char *arch_audio_i2s_clk_name(int id)
-{
-	switch (id) {
-	case 0:
-		return "clk_iis0";
-	case 1:
-		return "clk_iis1";
-	case 2:
-		return "clk_iis2";
-	case 3:
-		return "clk_iis3";
-	default:
-		break;
-	}
-	return NULL;
-}
-
-static inline int arch_audio_i2s_enable(int id)
-{
-	int ret = 0;
-
-	switch (id) {
-	case 0:
-		ap_apb_reg_set(REG_AP_APB_APB_EB, BIT_AP_APB_IIS0_EB);
-		break;
-	case 1:
-	case 2:
-	case 3:
-	default:
-		ret = -ENODEV;
-		break;
-	}
-
-	return ret;
-}
-
-static inline int arch_audio_i2s_disable(int id)
-{
-	int ret = 0;
-
-	switch (id) {
-	case 0:
-		ap_apb_reg_clr(REG_AP_APB_APB_EB, BIT_AP_APB_IIS0_EB);
-		break;
-	case 1:
-	case 2:
-	case 3:
-	default:
-		ret = -ENODEV;
-		break;
-	}
-
-	return ret;
-}
-
-static inline int arch_audio_i2s_tx_dma_info(int id)
-{
-	int ret = 0;
-
-
-	switch (id) {
-	case 0:
-		ret = DMA_REQ_IIS0_TX;
-		break;
-	case 1:
-	case 2:
-	case 3:
-	default:
-		ret = -ENODEV;
-		break;
-	}
-
-	return ret;
-}
-
-static inline int arch_audio_i2s_rx_dma_info(int id)
-{
-	int ret = 0;
-
-	switch (id) {
-	case 0:
-		ret = DMA_REQ_IIS0_RX;
-		break;
-	case 1:
-	case 2:
-	case 3:
-	default:
-		ret = -ENODEV;
-		break;
-	}
-
-	return ret;
-}
-
-static inline int arch_audio_i2s_reset(int id)
-{
-	int ret = 0;
-
-	switch (id) {
-	case 0:
-		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		udelay(10);
-		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		break;
-	case 1:
-		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		udelay(10);
-		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		break;
-	case 2:
-		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		udelay(10);
-		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		break;
-	case 3:
-		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		udelay(10);
-		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
-		break;
-	default:
-		ret = -ENODEV;
-		break;
-	}
-
-	return ret;
 }
 
 static inline int arch_dma_chanall_lslp_ena(bool enable)

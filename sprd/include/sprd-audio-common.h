@@ -5,12 +5,18 @@
  * which will be placed in this file. This file should be included in
  * sprd-asoc-agcp.h and sprd-audio-sharkl3.h
  */
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+#include "sprd-audio-pike2.h"
+#elif (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+#include "sprd-audio-sharkle.h"
+#else
 #include "sprd-audio-sharkl3.h"
+#endif
 #include "sprd-audio-agcp.h"
 
 #define CODEC_DP_BASE		0x1000
 #define CODEC_AP_OFFSET		0
-#define CODEC_AP_BASE_2721		0x2000
+#define CODEC_AP_BASE		0x2000
 #define CODEC_AP_BASE_AGCP		0x3000
 /*AP_APB registers offset */
 #define REG_AP_APB_APB_EB		0x0000
@@ -41,7 +47,9 @@ static inline int arch_audio_iis_to_audio_top_enable(
 {
 	u32 val;
 	int ret;
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 	return 0;
 #endif
 
@@ -145,21 +153,27 @@ static inline int arch_audio_i2s_reset(int id)
 		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		break;
 	case 1:
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		udelay(10);
 		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		break;
 #endif
 	case 2:
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		udelay(10);
 		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		break;
 #endif
 	case 3:
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 		ap_apb_reg_set(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
 		udelay(10);
 		ap_apb_reg_clr(REG_AP_APB_APB_RST, BIT_AP_APB_IIS0_SOFT_RST);
@@ -177,12 +191,27 @@ static inline int arch_audio_i2s_tx_dma_info(int id)
 	int ret = 0;
 
 	switch (id) {
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+	case 0:
+		ret = DMA_IIS0_TX;
+		break;
+	case 1:
+		ret = DMA_IIS1_TX;
+		break;
+	case 2:
+		ret = DMA_IIS2_TX;
+		break;
+	case 3:
+		ret = DMA_IIS3_TX;
+		break;
+#else
 	case 0:
 		ret = DMA_REQ_IIS0_TX;
 		break;
 	case 1:
 	case 2:
 	case 3:
+#endif
 	default:
 		ret = -ENODEV;
 		break;
@@ -196,12 +225,27 @@ static inline int arch_audio_i2s_rx_dma_info(int id)
 	int ret = 0;
 
 	switch (id) {
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+	case 0:
+		ret = DMA_IIS0_RX;
+		break;
+	case 1:
+		ret = DMA_IIS1_RX;
+		break;
+	case 2:
+		ret = DMA_IIS2_RX;
+		break;
+	case 3:
+		ret = DMA_IIS3_RX;
+		break;
+#else
 	case 0:
 		ret = DMA_REQ_IIS0_RX;
 		break;
 	case 1:
 	case 2:
 	case 3:
+#endif
 	default:
 		ret = -ENODEV;
 		break;
@@ -216,7 +260,9 @@ static inline int arch_audio_codec_digital_reg_enable(struct device *dev)
 	int ret = 0;
 	int test_v;
 
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 	aon_apb_gpr_null_check();
 	ret = aon_apb_reg_set(REG_AON_APB_APB_EB0, BIT_AON_APB_AUD_EB);
 	if (ret >= 0)
@@ -254,7 +300,9 @@ static inline int arch_audio_codec_digital_reg_disable(struct device *dev)
 {
 	int ret = 0;
 
-#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
 	aon_apb_gpr_null_check();
 	arch_audio_codec_audif_disable();
 	aon_apb_reg_clr(REG_AON_APB_APB_EB0, BIT_AON_APB_AUD_EB);
@@ -293,6 +341,27 @@ static inline int arch_audio_codec_digital_enable(void)
 		pr_err("%s set failed", __func__);
 #endif
 
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+	aon_apb_gpr_null_check();
+	/* internal digital 26M enable */
+	ret = aon_apb_reg_set(REG_AON_APB_CLK_EB0, BIT_AON_APB_EIC_EB);
+	if (ret != 0)
+		pr_err("%s set failed", __func__);
+#endif
+
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+	ret = anlg_phy_g_null_check();
+	if (ret < 0) {
+		pr_err("%s failed\n", __func__);
+		return ret;
+	}
+	/* internal digital 26M enable */
+	ret = anlg_phy_g_reg_set(REG_ANLG_PHY_G6_ANALOG_BB_TOP_ANA_BB_SINE_CTRL,
+		BIT_ANLG_PHY_G6_ANALOG_BB_TOP_SINDRV_ENA);
+	if (ret != 0)
+		pr_err("%s set failed", __func__);
+#endif
+
 	return ret;
 }
 
@@ -313,6 +382,27 @@ static inline int arch_audio_codec_digital_disable(void)
 		pr_err("%s set failed", __func__);
 #endif
 
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+	aon_apb_gpr_null_check();
+	/* internal digital 26M disable */
+	ret = aon_apb_reg_clr(REG_AON_APB_CLK_EB0, BIT_AON_APB_EIC_EB);
+	if (ret != 0)
+		pr_err("%s set failed", __func__);
+#endif
+
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+	ret = anlg_phy_g_null_check();
+	if (ret < 0) {
+		pr_err("%s failed\n", __func__);
+		return ret;
+	}
+	/* internal digital 26M disable */
+	ret = anlg_phy_g_reg_clr(REG_ANLG_PHY_G6_ANALOG_BB_TOP_ANA_BB_SINE_CTRL,
+		BIT_ANLG_PHY_G6_ANALOG_BB_TOP_SINDRV_ENA);
+	if (ret != 0)
+		pr_err("%s set failed", __func__);
+#endif
+
 	return ret;
 }
 
@@ -323,6 +413,13 @@ static inline int arch_audio_codec_switch2ap(void)
 	return arch_audio_codec_switch(ADU_DIGITAL_INT_TO_AP_CTRL);
 #endif
 
+#if (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE))
+	return arch_audio_codec_switch(ADU_DIGITAL_INT_TO_AP_CTRL);
+#endif
+
+#if (defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+	return arch_audio_codec_switch(ADU_DIGITAL_INT_TO_AP_CTRL);
+#endif
 	return 0;
 }
 
@@ -354,12 +451,24 @@ static inline void arch_audio_codec_digital_reset_aon(void)
 	aon_apb_reg_clr(REG_AON_APB_APB_RST0, BIT_AON_APB_AUDIF_SOFT_RST);
 }
 
-static inline int arch_audio_codec_digital_reset(struct device *dev)
-{
 #if (defined(CONFIG_SND_SOC_UNISOC_SHARKL3) || defined(CONFIG_SND_SOC_UNISOC_SHARKL3_MODULE))
+static inline int arch_audio_codec_digital_reset()
+{
 	arch_audio_codec_digital_reset_aon();
 	return 0;
+#elif (defined(CONFIG_SND_SOC_UNISOC_PIKE2) || defined(CONFIG_SND_SOC_UNISOC_PIKE2_MODULE) \
+	|| defined(CONFIG_SND_SOC_UNISOC_SHARKLE) || defined(CONFIG_SND_SOC_UNISOC_SHARKLE_MODULE))
+static inline void arch_audio_codec_digital_reset()
+{
+	aon_apb_gpr_null_check();
+	aon_apb_reg_set(REG_AON_APB_APB_RST0, BIT_AON_APB_AUD_SOFT_RST);
+	aon_apb_reg_set(REG_AON_APB_APB_RST0, BIT_AON_APB_AUDIF_SOFT_RST);
+	udelay(10);
+	aon_apb_reg_clr(REG_AON_APB_APB_RST0, BIT_AON_APB_AUD_SOFT_RST);
+	aon_apb_reg_clr(REG_AON_APB_APB_RST0, BIT_AON_APB_AUDIF_SOFT_RST);
 #else
+static inline int arch_audio_codec_digital_reset(struct device *dev)
+{
 	return arch_audio_codec_digital_reset_agdsp(dev);
 #endif
 }
