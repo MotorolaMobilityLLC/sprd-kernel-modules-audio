@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Unisoc AGDSP power domain driver
  *
- * Copyright (C) 2019 Unisoc, Inc.
+ * SPDX-FileCopyrightText: 2019 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  */
 
 #ifndef __SPRD_AGDSP_PD_H__

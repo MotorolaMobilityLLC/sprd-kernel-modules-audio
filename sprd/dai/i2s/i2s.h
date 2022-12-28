@@ -1,18 +1,12 @@
 /*
- * sound/soc/sprd/dai/i2s/i2s.h
+ * audio/sprd/dai/i2s/i2s.h
  *
  * SPRD SoC CPU-DAI -- SpreadTrum SOC DAI i2s.
  *
- * Copyright (C) 2015 SpreadTrum Ltd.
+ * SPDX-FileCopyrightText: 2015 Spreadtrum Communications (Shanghai) Co., Ltd
+ * SPDX-FileCopyrightText: 2016 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #ifndef __SPRD_DAI_I2S_H
 #define __SPRD_DAI_I2S_H

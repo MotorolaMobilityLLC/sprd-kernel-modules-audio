@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2019 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
 #define pr_fmt(fmt) "[voice-trigger-irq] "fmt
 
 #include <linux/debugfs.h>

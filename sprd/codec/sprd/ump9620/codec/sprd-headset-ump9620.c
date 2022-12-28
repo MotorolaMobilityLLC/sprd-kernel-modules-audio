@@ -1,15 +1,7 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (C) 2015 Spreadtrum Communications Inc.
+ * SPDX-FileCopyrightText: 2021 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #include "sprd-asoc-debug.h"
 #define pr_fmt(fmt) pr_sprd_fmt("HDST9620")""fmt

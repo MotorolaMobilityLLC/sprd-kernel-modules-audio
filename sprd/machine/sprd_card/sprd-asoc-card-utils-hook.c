@@ -1,12 +1,10 @@
 /*
  * ASoC SPRD sound card support
  *
- * Copyright (C) 2015 Renesas Solutions Corp.
- * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
+ * SPDX-FileCopyrightText: 2015 Spreadtrum Communications (Shanghai) Co., Ltd
+ * SPDX-FileCopyrightText: 2016 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  */
 #include "sprd-asoc-debug.h"
 #define pr_fmt(fmt) pr_sprd_fmt("BOARD")""fmt

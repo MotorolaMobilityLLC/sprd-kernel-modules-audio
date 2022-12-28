@@ -1,3 +1,13 @@
+/*
+ * audio/sprd/dai/vbc/
+ *
+ * Front end cpu dai of sprd audio driver
+ *
+ * SPDX-FileCopyrightText: 2018 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ */
+ 
 #ifndef __SPRD_FE_DAI_H
 #define __SPRD_FE_DAI_H
 

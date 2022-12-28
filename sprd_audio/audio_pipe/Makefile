@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015 Spreadtrum Communications (Shanghai) Co., Ltd
+# SPDX-FileCopyrightText: 2016 Unisoc (Shanghai) Technologies Co., Ltd
+# SPDX-License-Identifier: GPL-2.0-only
+
 #
 # sprd_apipe.ko
 #

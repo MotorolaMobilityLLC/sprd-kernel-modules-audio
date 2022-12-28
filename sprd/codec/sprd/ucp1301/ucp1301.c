@@ -1,8 +1,9 @@
 /*
- * License-Identifier: GPL-2.0
  * Driver for UNISOC-UCP1301.
  *
- * Copyright (c) 2019 UNISOC.
+ * SPDX-FileCopyrightText: 2019 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  */
 #include "sprd-asoc-debug.h"
 #define pr_fmt(fmt) pr_sprd_fmt("ucp1301")""fmt

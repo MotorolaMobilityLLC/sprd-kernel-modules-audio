@@ -1,18 +1,11 @@
 /*
- * sound/soc/sprd/dfm.h
+ * audio/sprd/dfm.h
  *
  * SPRD SoC VBC -- SpreadTrum SOC for VBC DAI function.
  *
- * Copyright (C) 2015 SpreadTrum Ltd.
+ * SPDX-FileCopyrightText: 2018 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY ork FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #ifndef __SPRD_DFM_H
 #define __SPRD_DFM_H

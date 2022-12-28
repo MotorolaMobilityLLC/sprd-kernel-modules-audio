@@ -1,8 +1,9 @@
 /*
- * License-Identifier: GPL-2.0
  * Driver for UNISOC PDM r2p0
  *
- * Copyright (c) 2020 UNISOC.
+ * SPDX-FileCopyrightText: 2020 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  */
 #include "sprd-asoc-debug.h"
 #define pr_fmt(fmt) pr_sprd_fmt(" pdm")""fmt

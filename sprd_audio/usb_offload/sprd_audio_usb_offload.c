@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Unisoc audio usb offload driver
  *
- * Copyright (C) 2020 Unisoc, Inc.
+ * SPDX-FileCopyrightText: 2020 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  */
 
 #define pr_fmt(fmt) "[sprd-audio-usb:offload] "fmt

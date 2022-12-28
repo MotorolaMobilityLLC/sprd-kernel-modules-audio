@@ -1,9 +1,7 @@
 /*
- * Copyright (C) 202- Spreadtrum Communications Inc.
- * This file is dual-licensed: you can use it either under the terms
- * of the GPL or the X11 license, at your option. Note that this dual
- * licensing only applies to this file, and not this project as a
- * whole.
+ * SPDX-FileCopyrightText: 2020 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
  */
 
 #ifndef _PDM_REG_H

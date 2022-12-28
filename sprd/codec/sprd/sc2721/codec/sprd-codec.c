@@ -1,18 +1,12 @@
 /*
- * sound/soc/sprd/codec/sprd/sc2721/sprd-codec.c
+ * bsp/modules/kernel5.15/audio/sprd/codec/sprd/sc2721/codec/sprd-codec.c
  *
  * SPRD-CODEC -- SpreadTrum Tiger intergrated codec.
  *
- * Copyright (C) 2015 SpreadTrum Ltd.
+ * SPDX-FileCopyrightText: 2015 Spreadtrum Communications (Shanghai) Co., Ltd
+ * SPDX-FileCopyrightText: 2016 Unisoc (Shanghai) Technologies Co., Ltd
+ * SPDX-License-Identifier: GPL-2.0-only
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #include "sprd-asoc-debug.h"
 #define pr_fmt(fmt) pr_sprd_fmt("SC2721")""fmt
