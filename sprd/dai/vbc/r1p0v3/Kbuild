@@ -23,6 +23,15 @@ ccflags-y += -I$(KO_MODULE_PATH)/../../../platform/dmaengine_2stage_pcm
 ifeq ($(BSP_KERNEL_DEFCONFIG),sprd_sharkl3_defconfig)
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_SHARKL3
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.s9863a_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_SHARKL3
+endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.sp7731e_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_PIKE2
+endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.sp9832e_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_SHARKLE
+endif
 
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)
 

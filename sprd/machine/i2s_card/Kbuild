@@ -20,6 +20,15 @@ ccflags-y += -I$(KO_MODULE_PATH)/../../include
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.sharkl3_)
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_I2S
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.s9863a_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_I2S
+endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.sp7731e_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_I2S
+endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.sp9832e_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_I2S
+endif
 
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)
 
