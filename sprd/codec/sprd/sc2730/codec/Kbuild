@@ -21,6 +21,9 @@ ccflags-y += -I$(KO_MODULE_PATH)/../../
 ccflags-y += -I$(KO_MODULE_PATH)/../../../../include
 ccflags-y += -I$(KO_MODULE_PATH)/../../../../../sprd_audio/agdsp_pd
 
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums312_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_SC2730
+endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums512_)
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_SC2730
 endif

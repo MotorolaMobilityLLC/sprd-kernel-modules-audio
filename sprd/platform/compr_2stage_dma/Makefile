@@ -21,6 +21,9 @@ export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/audio_mem/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/agdsp_pd/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/audio_sipc/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-sprd-card/Module.symvers
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums312_)
+export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/mcdt_hw/Module.symvers
+endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums512_)
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/mcdt_hw/Module.symvers
 endif

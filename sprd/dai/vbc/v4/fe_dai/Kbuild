@@ -24,6 +24,9 @@ ccflags-y += -I$(KO_MODULE_PATH)/../../../../platform/dmaengine_pcm
 ccflags-y += -I$(KO_MODULE_PATH)/../../../../../sprd_audio/agdsp_pd
 ccflags-y += -I$(KO_MODULE_PATH)/../../../../../sprd_audio/mcdt
 ccflags-y += -I$(KO_MODULE_PATH)/../../../../../sprd_audio/audiosipc
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums312_)
+ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT
+endif
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums512_)
 ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT
 endif

@@ -20,6 +20,9 @@ ccflags-y += -I$(KO_MODULE_PATH)/..
 ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums512_)
 ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.ums312_)
+ccflags-y += -DCONFIG_UNISOC_AUDIO_MCDT
+endif
 
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)
 
