@@ -20,6 +20,7 @@ KO_MODULE_KBUILD := $(CURDIR)/Kbuild
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/audio_mem/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-sprd-vbc-r1p0v3/Module.symvers
 export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-sprd-card/Module.symvers
+export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/sprd-i2s/Module.symvers
 
 .PHONY: modules modules_install clean
 
