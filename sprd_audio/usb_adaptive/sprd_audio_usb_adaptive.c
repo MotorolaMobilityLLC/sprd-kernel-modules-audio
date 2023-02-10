@@ -30,6 +30,10 @@
 
 #define TO_STRING(e) #e
 
+#define QUIRK_VENDOR_ID			0x12D1
+#define QUIRK_PRODUCT_ID		0x3A07
+#define QUIRK_BCD_DEVICE		0x0028
+
 enum usb_aud_type {
 	USB_AUD_TYPE_SYNC,
 	USB_AUD_TYPE_ADAPTIVE,
@@ -87,6 +91,7 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 {
 	struct snd_usb_endpoint *ep = (struct snd_usb_endpoint *)arg;
 	struct usb_hcd *hcd;
+	struct usb_device_descriptor *descriptor = &ep->chip->dev->descriptor;
 	int is_offload_mod;
 	int stream;
 	int usb_sync_type;
@@ -123,6 +128,22 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 				__func__, action ? "enter" : "exit", stream ? "capture" : "playback",
 				usb_aud_type_txt[vendor_audio.usb_aud_type[stream]]);
 			musb_adaptive_config(hcd, ep->ep_num, 0, 0, 0, 48, action);
+
+			pr_debug("%s, vendor_id = 0x%x, product_id = 0x%x, bcd_device = 0x%x\n",
+				__func__, descriptor->idVendor,
+				descriptor->idProduct, descriptor->bcdDevice);
+			/*
+			 * Workaround: bug 2113846
+			 * add delay here for some specific usb device to make sure
+			 * audio dsp has stopped before we call usb_set_interface.
+			 */
+			if (stream == SNDRV_PCM_STREAM_CAPTURE &&
+				descriptor->idVendor == QUIRK_VENDOR_ID &&
+				descriptor->idProduct == QUIRK_PRODUCT_ID &&
+				descriptor->bcdDevice == QUIRK_BCD_DEVICE) {
+				pr_info("Workaround for specific usb device\n");
+				mdelay(20);
+			}
 		}
 	}
 }
