@@ -5069,6 +5069,64 @@ static struct snd_soc_dai_ops sprd_codec_dai_ops = {
 	.shutdown = sprd_codec_pcm_hw_shutdown,
 };
 
+#ifdef CONFIG_PM
+static int sprd_codec_soc_suspend(struct snd_soc_component *codec)
+{
+	struct sprd_codec_priv *sprd_codec = snd_soc_component_get_drvdata(codec);
+	struct regulator *regu = sprd_codec->head_mic;
+	int ret = 0;
+
+	if (regu && regulator_is_enabled(regu) &&
+	    sprd_codec->startup_cnt == 0) {
+		ret = regulator_set_mode(regu, REGULATOR_MODE_STANDBY);
+		if (ret < 0) {
+			sp_asoc_pr_info("%s, set mode ret=%d", __func__, ret);
+			return ret;
+		}
+		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU0),
+					  BG_EN, 0);
+		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU1),
+					  HMIC_BIAS_VREF_SEL, 0);
+		if (ret < 0) {
+			sp_asoc_pr_info("%s, clear BG failed, ANA_PMU0=0x%x, ANA_PMU1=0x%x\n",
+					__func__, arch_audio_codec_read(ANA_PMU0), arch_audio_codec_read(ANA_PMU1));
+			return ret;
+		}
+	} else {
+		sp_asoc_pr_info("%s ignored\n", __func__);
+	}
+	return 0;
+}
+
+static int sprd_codec_soc_resume(struct snd_soc_component *codec)
+{
+	struct sprd_codec_priv *sprd_codec = snd_soc_component_get_drvdata(codec);
+	struct regulator *regu = sprd_codec->head_mic;
+	int ret = 0;
+
+	if (regu && regulator_is_enabled(regu)) {
+		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU0), BG_EN, BG_EN);
+		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU1),
+				HMIC_BIAS_VREF_SEL, HMIC_BIAS_VREF_SEL);
+		if (ret < 0) {
+			sp_asoc_pr_info("%s, set BG failed, ANA_PMU0=0x%x, ANA_PMU1=0x%x\n",
+					__func__, arch_audio_codec_read(ANA_PMU0), arch_audio_codec_read(ANA_PMU1));
+			return ret;
+		}
+
+		ret = regulator_set_mode(regu, REGULATOR_MODE_NORMAL);
+		if (ret < 0) {
+			sp_asoc_pr_info("%s, set mode ret=%d", __func__, ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+#else
+#define sprd_codec_soc_suspend NULL
+#define sprd_codec_soc_resume  NULL
+#endif
+
 /*
  * proc interface
  */
@@ -5393,6 +5451,8 @@ static void sprd_codec_power_regulator_exit(struct sprd_codec_priv *sprd_codec)
 static struct snd_soc_component_driver soc_codec_dev_sprd_codec = {
 	.probe = sprd_codec_soc_probe,
 	.remove = sprd_codec_soc_remove,
+	.suspend = sprd_codec_soc_suspend,
+	.resume = sprd_codec_soc_resume,
 	.read = sprd_codec_read,
 	.write = sprd_codec_write,
 	.dapm_widgets = sprd_codec_dapm_widgets,

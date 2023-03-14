@@ -1080,12 +1080,10 @@ static void sprd_enable_hmicbias_polling(bool enable, bool force_disable)
 			sprd_hmicbias_mode_set(hdst, REGULATOR_MODE_STANDBY);
 			sprd_headset_power_set(&hdst->power_manager,
 				"DIG_CLK_HID", true);
-			headset_reg_set_bits(ANA_HID0, HID_EN);
 			hdst->current_polling_state = true;
 		}
 	} else {
 		if (hdst->current_polling_state == true) {
-			headset_reg_clr_bits(ANA_HID0, HID_EN);
 			sprd_headset_power_set(&hdst->power_manager,
 				"DIG_CLK_HID", false);
 			sprd_hmicbias_mode_set(hdst, REGULATOR_MODE_NORMAL);
