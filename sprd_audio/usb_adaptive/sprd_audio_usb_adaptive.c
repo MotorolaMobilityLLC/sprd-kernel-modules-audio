@@ -91,12 +91,13 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 {
 	struct snd_usb_endpoint *ep = (struct snd_usb_endpoint *)arg;
 	struct usb_hcd *hcd;
-	struct usb_device_descriptor *descriptor = &ep->chip->dev->descriptor;
+	struct usb_device_descriptor *descriptor;
 	int is_offload_mod;
 	int stream;
 	int usb_sync_type;
 
 	if (ep) {
+		descriptor = &ep->chip->dev->descriptor;
 		stream = usb_pipein(ep->pipe) ? SNDRV_PCM_STREAM_CAPTURE : SNDRV_PCM_STREAM_PLAYBACK;
 		usb_sync_type = ep->cur_audiofmt->ep_attr & USB_ENDPOINT_SYNCTYPE;
 
