@@ -5542,6 +5542,7 @@ static int dsp_vbc_reg_shm_proc_read(struct snd_info_buffer *buffer)
 	int reg;
 	u32 size = 8*2048;
 	u32 *addr = kzalloc(size, GFP_KERNEL);
+	u32 *pdata;
 
 	if (!addr)
 		return -ENOMEM;
@@ -5554,13 +5555,14 @@ static int dsp_vbc_reg_shm_proc_read(struct snd_info_buffer *buffer)
 		return -1;
 	}
 
+	pdata = addr;
 	snd_iprintf(buffer, "dsp-vbc register dump:\n");
 	for (reg = REG_VBC_MODULE_CLR0;
-	     reg <= REG_VBC_IIS_IN_STS; reg += 0x10, addr += 4) {
+	     reg <= REG_VBC_IIS_IN_STS; reg += 0x10, pdata += 4) {
 		snd_iprintf(buffer,
 			    "0x%04x | 0x%04x 0x%04x 0x%04x 0x%04x\n",
-			    reg - VBC_DSP_ADDR_BASE, (*addr),
-			    *(addr + 1), *(addr + 2), *(addr + 3));
+			    reg - VBC_DSP_ADDR_BASE, (*pdata),
+			    *(pdata + 1), *(pdata + 2), *(pdata + 3));
 	}
 	kfree(addr);
 
