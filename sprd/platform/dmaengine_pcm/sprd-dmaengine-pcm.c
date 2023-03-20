@@ -347,13 +347,15 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 	if (ret < 0)
 		goto out;
 
-	ret = -ENOMEM;
 	rtd = devm_kzalloc(dev, sizeof(*rtd), GFP_KERNEL);
-	if (!rtd)
+	if (!rtd) {
+		ret = -ENOMEM;
 		goto out;
+        }
+
 	runtime->private_data = rtd;
 	mutex_lock(&pm_dma->pm_mtx_cnt);
-	/* dma related need to access auio dsp sys */
+	/* dma related need to access audio dsp sys */
 	if (!is_no_pcm_dai(asoc_rtd_to_cpu(srtd, 0)->id)) {
 		ret = pm_runtime_get_sync(g_dev);
 		if (ret < 0) {
@@ -374,6 +376,8 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 		ret = 0;
 		goto out;
 	}
+
+	ret = -ENOMEM;
 	size_inout = runtime->hw.periods_max * sizeof(struct sprd_dma_cfg);
 	if (asoc_rtd_to_cpu(srtd, 0)->id == FE_DAI_ID_NORMAL_AP01 &&
 		substream->stream == SNDRV_PCM_STREAM_CAPTURE &&
@@ -383,7 +387,6 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 				&size_inout);
 		if (!rtd->dma_cfg_phy[0]) {
 			pr_err("audio_smem_alloc failed for rtd->dma_cfg_phy[0]");
-			ret = -ENOMEM;
 			goto err;
 		}
 	} else {
@@ -391,7 +394,6 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 			audio_mem_alloc(DDR32, &size_inout);
 		if (!rtd->dma_cfg_phy[0]) {
 			pr_err("audio_smem_alloc failed for rtd->dma_cfg_phy[0]");
-			ret = -ENOMEM;
 			goto err;
 		}
 	}
@@ -440,9 +442,14 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 		runtime->hw.periods_max*(sizeof(struct sprd_dma_cfg)));
 	pr_info("sizeof(struct sprd_dma_cfg) = %zd, size_inout=%u\n",
 		sizeof(struct sprd_dma_cfg), size_inout);
-	/*pmc dma data*/
+	/* pcm dma data */
 	ret = sprd_pcm_preallocate_dma_ddr32_buffer(pcm,
 		substream->stream);
+	if (ret) {
+		goto err;
+        }
+
+	ret = -ENOMEM;
 	rtd->dma_cfg_array = devm_kzalloc(dev, hw_chan * ((
 		runtime->hw.periods_max * sizeof(struct scatterlist))
 		+ sizeof(struct sprd_dma_cfg)), GFP_KERNEL);
@@ -470,7 +477,7 @@ static int sprd_pcm_open(struct snd_soc_component *component, struct snd_pcm_sub
 err:
 	pr_err("ERR:dma_pdata alloc failed!\n");
 	mutex_lock(&pm_dma->pm_mtx_cnt);
-	/* dma related need to access auio dsp sys */
+	/* dma related need to access audio dsp sys */
 	if (rtd->is_access_enabled) {
 		pm_runtime_mark_last_busy(g_dev);
 		pm_runtime_put_autosuspend(g_dev);
@@ -521,7 +528,7 @@ err:
 			rtd->dma_cfg_phy[1] = (dma_addr_t)NULL;
 		}
 	}
-	/*dma data buffer free*/
+	/* dma data buffer free */
 	if (substream->dma_buffer.area) {
 		audio_mem_unmap(substream->dma_buffer.area);
 		substream->dma_buffer.area = NULL;
@@ -581,8 +588,14 @@ static int sprd_pcm_close(struct snd_soc_component *component, struct snd_pcm_su
 		devm_kfree(dev, rtd);
 		return 0;
 	}
-	devm_kfree(dev, rtd->dma_pdata);
-	devm_kfree(dev, rtd->dma_cfg_array);
+	if (rtd->dma_pdata) {
+		devm_kfree(dev, rtd->dma_pdata);
+		rtd->dma_pdata = NULL;
+	}
+	if (rtd->dma_cfg_array) {
+		devm_kfree(dev, rtd->dma_cfg_array);
+		rtd->dma_cfg_array = NULL;
+	}
 	if (rtd->dma_cfg_virt[0]) {
 		audio_mem_unmap(rtd->dma_cfg_virt[0]);
 		rtd->dma_cfg_virt[0] = NULL;
