@@ -31,9 +31,7 @@
 
 #define TO_STRING(e) #e
 
-#define QUIRK_VENDOR_ID			0x12D1
 #define QUIRK_PRODUCT_ID		0x3A07
-#define QUIRK_BCD_DEVICE		0x0028
 
 enum usb_aud_type {
 	USB_AUD_TYPE_SYNC,
@@ -140,9 +138,7 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 			 * audio dsp has stopped before we call usb_set_interface.
 			 */
 			if (stream == SNDRV_PCM_STREAM_CAPTURE &&
-				descriptor->idVendor == QUIRK_VENDOR_ID &&
-				descriptor->idProduct == QUIRK_PRODUCT_ID &&
-				descriptor->bcdDevice == QUIRK_BCD_DEVICE) {
+				descriptor->idProduct == QUIRK_PRODUCT_ID) {
 				pr_info("Workaround for specific usb device\n");
 				mdelay(20);
 			}
