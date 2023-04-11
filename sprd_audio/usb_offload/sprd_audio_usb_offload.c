@@ -104,7 +104,7 @@ static void usb_offload_ep_action(void *data, void *arg, bool action)
 		case SNDRV_PCM_FORMAT_S16_LE:
 			is_pcm_24bit = 0;
 			break;
-		case SNDRV_PCM_FORMAT_S24_LE:
+		case SNDRV_PCM_FORMAT_S24_3LE:
 			is_pcm_24bit = 1;
 			break;
 		default:
