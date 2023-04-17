@@ -2288,16 +2288,53 @@ static int sprd_headset_switch_power(struct sprd_headset *hdst, bool on)
 	return regulator_enable(reg);
 }
 
+static void sprd_headset_typec_work(struct sprd_headset *hdst)
+{
+	int ret;
+	int level = 0;
+	bool attached = false;
+	unsigned int val = 0;
+	int gpio_lr = hdst->pdata.gpios[HDST_GPIO_TYPEC_LR];
+
+	if (hdst->type_status == HEADSET_TYPEC_IN) {
+		level = 1;
+		attached = true;
+		headset_reg_clr_bits(ANA_HDT2, BIT(PLGPD_EN));
+		} else {
+		headset_reg_set_bits(ANA_HDT2, BIT(PLGPD_EN));
+		}
+	pr_info("%s, type_status 0x%x\n", __func__, hdst->type_status);
+
+	__pm_wakeup_event(hdst->det_all_wakelock, msecs_to_jiffies(2000));
+	ret = sprd_headset_switch_power(hdst, attached);
+	if (ret)
+		pr_err("Power typec switch supply failed(%d)!\n", ret);
+	hdst->typec_attached = attached;
+	/*
+	 * 1. attached: type-c d+/d- -> left/right channel of headphone;
+	 * 2. detached: type-c d+/d- -> usb d+/d-.
+	 */
+	gpio_set_value_cansleep(gpio_lr, level);
+	pr_info("%s, gpio_lr %d, analog typec headset '%s'. Switch D+/D- to '%s'\n",
+		__func__, gpio_get_value(gpio_lr),
+		attached ? "ATTACHED" : "DETACHED",
+		level ? "HEADPHONE" : "USB");
+	ret = cancel_delayed_work(&hdst->det_all_work);
+	queue_delayed_work(hdst->det_all_work_q,
+		&hdst->det_all_work, msecs_to_jiffies(5));
+	ret = headset_reg_read(ANA_STS0, &val);
+	if (ret)
+		pr_err("%s: read reg#%#x failed!\n", __func__, ANA_STS0);
+	else
+		pr_info("ANA_STS0 = 0x%08X OUT, ret %d, type_status %d\n", val, ret, hdst->type_status);
+}
+
 static int headset_typec_notifier(struct notifier_block *nb,
 				  unsigned long status, void *data)
 {
 	struct sprd_headset *hdst = container_of(nb, struct sprd_headset, typec_plug_nb);
 	struct sprd_headset_platform_data *pdata = &hdst->pdata;
 	int gpio_lr = pdata->gpios[HDST_GPIO_TYPEC_LR];
-	unsigned int val = 0;
-	bool attached = false;
-	int level = 0;
-	int ret;
 
 	pr_info("%s IN, typec_lr_gpio_level: %u, gpio_lr: %d, level: %d, hdst_status %d, type_status %d\n",
 	       __func__, pdata->typec_lr_gpio_level, gpio_lr,
@@ -2310,44 +2347,12 @@ static int headset_typec_notifier(struct notifier_block *nb,
 	}
 
 	if (status & CABLE_STATUS_ATTACHED) {
-		level = 1;
-		attached = true;
 		hdst->type_status = HEADSET_TYPEC_IN;
-		headset_reg_clr_bits(ANA_HDT2, BIT(PLGPD_EN));
-		pr_info("%s Typec In, type_status 0x%x\n", __func__, hdst->type_status);
 	} else {
 		hdst->type_status = HEADSET_TYPEC_OUT;
-		headset_reg_set_bits(ANA_HDT2, BIT(PLGPD_EN));
-		pr_info("%s Typec Out, type_status 0x%x\n", __func__, hdst->type_status);
 	}
 
-	__pm_wakeup_event(hdst->det_all_wakelock, msecs_to_jiffies(2000));
-
-	ret = sprd_headset_switch_power(hdst, attached);
-	if (ret)
-		pr_err("Power typec switch supply failed(%d)!\n", ret);
-
-	hdst->typec_attached = attached;
-	/*
-	 * 1. attached: type-c d+/d- -> left/right channel of headphone;
-	 * 2. detached: type-c d+/d- -> usb d+/d-.
-	 */
-	gpio_set_value_cansleep(gpio_lr, level);
-	pr_info("%s, gpio_lr %d, analog typec headset '%s'. Switch D+/D- to '%s'\n",
-		__func__, gpio_get_value(gpio_lr),
-		attached ? "ATTACHED" : "DETACHED",
-		level ? "HEADPHONE" : "USB");
-
-	ret = cancel_delayed_work(&hdst->det_all_work);
-	queue_delayed_work(hdst->det_all_work_q,
-		&hdst->det_all_work, msecs_to_jiffies(5));
-
-	ret = headset_reg_read(ANA_STS0, &val);
-	if (ret) {
-		pr_err("%s: read reg#%#x failed!\n", __func__, ANA_STS0);
-		return ret;
-	}
-	pr_info("%s out, ANA_STS0 = 0x%08X OUT, ret %d, type_status %d\n", __func__, val, ret, hdst->type_status);
+	sprd_headset_typec_work(hdst);
 
 	return NOTIFY_OK;
 }
@@ -2634,6 +2639,11 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 		}
 	}
 
+	headset_debug_sysfs_init();
+	headset_adc_cal_from_efuse(hdst->pdev);
+	sprd_headset_power_regulator_init(hdst);
+
+	pr_info("%s ---- \n",__func__);
 	if (hdst->sup_typec == true) {
 		gpio_switch = pdata->gpios[HDST_GPIO_SW];
 		gpio_lr = pdata->gpios[HDST_GPIO_TYPEC_LR];
@@ -2648,7 +2658,7 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 			ret = PTR_ERR(hdst->edev);
 			dev_err(dev, "typec analog headset failed to find gpio extcon device, ret %d\n",
 				ret);
-			return PTR_ERR(hdst->edev);
+			goto failed_to_config_typec;
 		}
 
 		/* Register notifier block for type-c headset detecting. */
@@ -2660,16 +2670,26 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 			dev_err(dev,
 				"failed to register extcon HEADPHONE notifier, ret %d\n",
 				ret);
-			return ret;
+			goto failed_to_config_typec;
 		}
+		if (extcon_get_state(hdst->edev, EXTCON_JACK_HEADPHONE)) {
+			hdst->type_status = HEADSET_TYPEC_IN;
+			sprd_headset_typec_work(hdst);
+		}
+		pr_info("%s sup typec true\n",__func__);
 	}
-
-	headset_debug_sysfs_init();
-	headset_adc_cal_from_efuse(hdst->pdev);
-	sprd_headset_power_regulator_init(hdst);
+	else{
+	   pr_info("%s sup typec false\n",__func__);
+	}
 
 	return 0;
 
+failed_to_config_typec:
+	headset_irq_detect_all_enable(0, hdst->irq_detect_all);
+	sprd_headset_power_deinit();
+	if (pdata->jack_type == JACK_TYPE_NC) {
+	devm_free_irq(dev, hdst->irq_detect_mic, hdst);
+	}
 failed_to_request_detect_mic_irq:
 	devm_free_irq(dev, hdst->irq_detect_all, hdst);
 failed_to_request_detect_irq:
