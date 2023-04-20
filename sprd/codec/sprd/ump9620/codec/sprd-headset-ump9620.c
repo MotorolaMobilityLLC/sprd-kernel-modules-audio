@@ -2592,7 +2592,7 @@ static void sprd_headset_typec_work(struct sprd_headset *hdst)
 	if (ret)
 		pr_err("Power typec swich supply failed(%d)!\n", ret);
 
-	__pm_wakeup_event(hdst->hdst_detect_wakelock, msecs_to_jiffies(2000));
+	__pm_wakeup_event(hdst->hdst_detect_wakelock, 3500);
 	queue_delayed_work(hdst->det_all_work_q,
 		&hdst->det_all_work, 0);
 }
