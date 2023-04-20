@@ -1543,6 +1543,8 @@ static int sprd_pcm_request_dma_channel(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *srtd = substream->private_data;
 	struct audio_pm_dma *pm_dma;
 	struct dma_chan *temp_dma_chan;
+	struct snd_soc_component *platform =
+		snd_soc_rtdcom_lookup(srtd, SPRD_DMAENGINE_PCM_DRV_NAME);
 
 	pm_dma = get_pm_dma();
 	if (!dma_data) {
@@ -1558,10 +1560,8 @@ static int sprd_pcm_request_dma_channel(struct snd_pcm_substream *substream,
 			break;
 		}
 
-		dma_chn_request =
-		    of_dma_request_slave_channel(np,
-						 dma_data->used_dma_channel_name
-						 [i]);
+		dma_chn_request = dma_request_chan(platform->dev,
+					 dma_data->used_dma_channel_name[i]);
 		if (IS_ERR(dma_chn_request)) {
 			pr_err("ERR: request dma channel(%s) failed!(%ld)\n",
 			       dma_data->used_dma_channel_name[i],
@@ -1607,8 +1607,8 @@ static int sprd_pcm_request_dma_channel(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
-	dma_chn_request =
-	    of_dma_request_slave_channel(np, dma_data->used_dma_channel_name2);
+	dma_chn_request = dma_request_chan(platform->dev,
+		dma_data->used_dma_channel_name2);
 	if (IS_ERR(dma_chn_request)) {
 		pr_err("ERR: request dma channel(%s) failed!(%ld)\n",
 		       dma_data->used_dma_channel_name2,

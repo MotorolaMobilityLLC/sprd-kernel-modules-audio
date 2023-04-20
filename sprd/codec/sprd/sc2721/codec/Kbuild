@@ -36,6 +36,11 @@ ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.sprd.arm.sp9832e_)
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_SC2721
 ccflags-y += -DCONFIG_SND_SOC_UNISOC_SHARKLE
 endif
+ifeq ($(BSP_KERNEL_BUILD_CONFIG),build.config.gki.aarch64.s9863a_)
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_CODEC_SC2721
+ccflags-y += -DCONFIG_SND_SOC_UNISOC_SHARKL3
+endif
+
 KO_MODULE_SRC += $(wildcard $(KO_MODULE_PATH)/*.c)
 
 #
