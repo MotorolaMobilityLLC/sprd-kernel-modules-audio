@@ -1792,6 +1792,48 @@ int dsp_audio_zoom_focus_set(int type, int x, int y, int width, int height)
 	return ret;
 }
 
+/***********************************************************
+ * cmd for SND_KCTL_TYPE_AUDIO_AEC_SET
+ ***********************************************************/
+int dsp_audio_aec_set(u32 value)
+{
+	int ret;
+	u32 audio_aec_value = value;
+
+	pr_info("%s value = %d", __func__, value);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+		SND_KCTL_TYPE_AUDIO_AEC_SET,
+		-1, SND_VBC_DSP_IO_KCTL_SET, &audio_aec_value,
+		sizeof(audio_aec_value),
+		AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_err("Failed to set audio_aec_value, ret %d\n", ret);
+
+	return ret;
+}
+
+/***********************************************************
+ * cmd for SND_KCTL_TYPE_AUDIO_NS_SET
+ ***********************************************************/
+int dsp_audio_ns_set(u32 value)
+{
+	int ret;
+	u32 audio_ns_value = value;
+
+	pr_info("%s value = %d", __func__, value);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+		SND_KCTL_TYPE_AUDIO_NS_SET,
+		-1, SND_VBC_DSP_IO_KCTL_SET, &audio_ns_value,
+		sizeof(audio_ns_value),
+		AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_err("Failed to set audio_ns_value, ret %d\n", ret);
+
+	return ret;
+}
+
 int vbc_dsp_cust_dev_set(int dev, int id, int stream)
 {
 	int ret;

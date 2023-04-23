@@ -593,6 +593,8 @@ enum KCTL_TYPE {
 	SND_KCTL_TYPE_USB_MCDT_IN_DEVICE,
 	SND_KCTL_TYPE_USB_MCDT_MOUDLE_EN,
 	SND_KCTL_TYPE_CUR_OUT_DEVICE = 0x50,
+	SND_KCTL_TYPE_AUDIO_AEC_SET = 0x61,
+	SND_KCTL_TYPE_AUDIO_NS_SET,
 	SND_KCTL_TYPE_END,
 };
 
@@ -1594,6 +1596,8 @@ struct vbc_codec_priv {
 	u32 audio_zoom_st;
 	int audio_zoom_ratio;
 	struct audio_zoom_focus_t audio_zoom_focus;
+	u32 audio_aec_set;
+	u32 audio_ns_set;
 };
 
 /* BE_DAI_ID_USB_MCDT: use MCDT_CHAN3 adc path */
@@ -1708,5 +1712,7 @@ int vbc_dsp_cust_vol_set(int up_down, int id, int stream);
 int dsp_audio_zoom_st_set(u32 value);
 int dsp_audio_zoom_ratio_set(int ratio);
 int dsp_audio_zoom_focus_set(int type, int x, int y, int width, int height);
+int dsp_audio_aec_set(u32 value);
+int dsp_audio_ns_set(u32 value);
 
 #endif /* __VBC_V4_PHY_DRV_H */

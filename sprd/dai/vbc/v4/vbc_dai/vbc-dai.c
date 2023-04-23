@@ -4950,6 +4950,66 @@ static int dsp_audio_zoom_focus_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int dsp_audio_aec_enable_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->audio_aec_set;
+	pr_info("%s value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int dsp_audio_aec_enable_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	int ret;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.enumerated.item[0];
+	pr_info("%s value = %d\n", __func__, value);
+
+	vbc_codec->audio_aec_set = value;
+	ret = dsp_audio_aec_set(value);
+	if (ret != 0)
+		pr_err("%s set audio_aec_set failed %d\n", __func__, ret);
+	return 0;
+}
+
+static int dsp_audio_ns_enable_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->audio_ns_set;
+	pr_info("%s value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int dsp_audio_ns_enable_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	int ret;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.enumerated.item[0];
+	pr_info("%s value = %d\n", __func__, value);
+
+	vbc_codec->audio_ns_set = value;
+	ret = dsp_audio_ns_set(value);
+	if (ret != 0)
+		pr_err("%s set audio_ns_set failed %d\n", __func__, ret);
+	return 0;
+}
+
 /* -9450dB to 0dB in 150dB steps ( mute instead of -9450dB) */
 static const DECLARE_TLV_DB_SCALE(mdg_tlv, -9450, 150, 1);
 static const DECLARE_TLV_DB_SCALE(dg_tlv, -9450, 150, 1);
@@ -5504,6 +5564,10 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 		dsp_audio_zoom_ratio_get, dsp_audio_zoom_ratio_put),
 	SND_SOC_BYTES_EXT("AUDIO_ZOOM_FOCUS", 20,
 		dsp_audio_zoom_focus_get, dsp_audio_zoom_focus_put),
+	SOC_SINGLE_BOOL_EXT("AUDIO_AEC_SET", 0,
+		dsp_audio_aec_enable_get, dsp_audio_aec_enable_put),
+	SOC_SINGLE_BOOL_EXT("AUDIO_NS_SET", 0,
+		dsp_audio_ns_enable_get, dsp_audio_ns_enable_put),
 };
 
 static u32 vbc_codec_read(struct snd_soc_component *codec,
