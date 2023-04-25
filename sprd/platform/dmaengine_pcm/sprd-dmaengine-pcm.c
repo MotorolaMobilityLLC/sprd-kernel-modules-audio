@@ -42,6 +42,535 @@
 #include "sprd-dai.h"
 #include "sprd-tdm.h"
 
+/* begine of dmabuf */
+#include <linux/export.h>
+#include <linux/dma-buf.h>
+
+struct pcm_dmabuf_attachment {
+	struct device *dev;
+	struct sg_table *sgt;
+	enum dma_data_direction dir;
+	struct list_head list;
+};
+
+struct pcm_dmabuf_object {
+	struct snd_dma_buffer *dmab;
+	struct dma_buf *dmabuf;
+	struct page **pages;
+	int pages_num;
+	struct mutex lock;
+	struct list_head attachments;
+};
+
+static int snd_pcm_map_attach(struct dma_buf *dma_buf,
+			      struct dma_buf_attachment *attach)
+{
+	struct pcm_dmabuf_attachment *pcm_attach;
+
+	pr_info("%s: enter\n", __func__);
+	pcm_attach = kzalloc(sizeof(*pcm_attach), GFP_KERNEL);
+	if (!pcm_attach)
+		return -ENOMEM;
+
+	pcm_attach->dir = DMA_NONE;
+	attach->priv = pcm_attach;
+
+	return 0;
+}
+
+static void snd_pcm_map_detach(struct dma_buf *dma_buf,
+			       struct dma_buf_attachment *attach)
+{
+	struct pcm_dmabuf_attachment *pcm_attach = attach->priv;
+	struct sg_table *sgt;
+
+	pr_info("%s: enter\n", __func__);
+	if (!pcm_attach)
+		return;
+
+	sgt = pcm_attach->sgt;
+	if (sgt) {
+		if (pcm_attach->dir != DMA_NONE)
+			dma_unmap_sg_attrs(attach->dev, sgt->sgl,
+					   sgt->nents,
+					   pcm_attach->dir,
+					   DMA_ATTR_SKIP_CPU_SYNC);
+
+		sg_free_table(sgt);
+	}
+
+	kfree(sgt);
+	kfree(pcm_attach);
+	attach->priv = NULL;
+}
+
+static struct sg_table *snd_pcm_dmabuf_to_sgt(struct pcm_dmabuf_object *obj)
+{
+	struct snd_dma_buffer *dmab = obj->dmab;
+	int type = dmab->dev.type, ret, i;
+	struct sg_table *sgt;
+	unsigned long offset;
+
+	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return ERR_PTR(-ENOMEM);
+
+	switch (type) {
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		offset = offset_in_page(dmab->area);
+
+		for (i = 0; i < obj->pages_num; i++) {
+			struct page *page =
+				virt_to_page(dmab->area + i * PAGE_SIZE);
+
+			obj->pages[i] = page;
+		}
+
+		ret = sg_alloc_table_from_pages(sgt, obj->pages, obj->pages_num,
+						offset, dmab->bytes, GFP_KERNEL);
+		if (ret)
+			goto error;
+		break;
+
+#ifdef CONFIG_GENERIC_ALLOCATOR
+	case SNDRV_DMA_TYPE_DEV_IRAM:
+#endif
+	case SNDRV_DMA_TYPE_DEV:
+		ret = dma_get_sgtable(dmab->dev.dev, sgt, dmab->area,
+				      dmab->addr, dmab->bytes);
+		if (ret)
+			goto error;
+		break;
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	case SNDRV_DMA_TYPE_DEV_SG:
+		struct snd_sg_buf *sgbuf = dmab->private_data;
+
+		obj->pages = sgbuf->page_table;
+		ret = sg_alloc_table_from_pages(sgt, obj->pages, obj->pages_num,
+						0, dmab->bytes, GFP_KERNEL);
+		if (ret)
+			goto error;
+		break;
+#endif
+
+	default:
+		ret = -ENXIO;
+		goto error;
+	}
+
+	return sgt;
+
+error:
+	kfree(sgt);
+	return ERR_PTR(ret);
+}
+
+static struct sg_table *snd_pcm_map_dmabuf(struct dma_buf_attachment *attach,
+					   enum dma_data_direction dir)
+{
+	struct pcm_dmabuf_attachment *pcm_attach = attach->priv;
+	struct pcm_dmabuf_object *obj = attach->dmabuf->priv;
+	struct sg_table *sgt;
+	int ret;
+
+	pr_info("%s: enter\n", __func__);
+	if (WARN_ON(dir == DMA_NONE || !pcm_attach))
+		return ERR_PTR(-EINVAL);
+
+	if (pcm_attach->dir == dir)
+		return pcm_attach->sgt;
+
+	if (WARN_ON(pcm_attach->dir != DMA_NONE))
+		return ERR_PTR(-EBUSY);
+
+	sgt = snd_pcm_dmabuf_to_sgt(obj);
+	if (IS_ERR(sgt))
+		return sgt;
+
+	ret = dma_map_sg_attrs(attach->dev, sgt->sgl, sgt->nents, dir,
+			       DMA_ATTR_SKIP_CPU_SYNC);
+	if (!ret) {
+		sg_free_table(sgt);
+		kfree(sgt);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	pcm_attach->sgt = sgt;
+	pcm_attach->dir = dir;
+
+	return sgt;
+}
+
+static void snd_pcm_unmap_dmabuf(struct dma_buf_attachment *attach,
+				 struct sg_table *sgt,
+				 enum dma_data_direction dir)
+{
+	pr_info("%s: enter\n", __func__);
+	/* Nothing need to do */
+}
+
+static int snd_pcm_dmabuf_vmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+{
+	return 0;
+}
+
+static void snd_pcm_dmabuf_vunmap(struct dma_buf *dmabuf, struct dma_buf_map *map)
+{
+
+}
+
+static int snd_pcm_dmabuf_mmap(struct dma_buf *dma_buf,
+			       struct vm_area_struct *vma)
+{
+	struct pcm_dmabuf_object *obj = dma_buf->priv;
+	struct snd_dma_buffer *dmab = obj->dmab;
+	unsigned long addr = vma->vm_start;
+	unsigned long offset = vma->vm_pgoff * PAGE_SIZE;
+	int type = dmab->dev.type, ret, i;
+	struct sg_table *sgt;
+	struct scatterlist *sg;
+
+	pr_info("%s: enter\n", __func__);
+	switch (type) {
+#ifdef CONFIG_GENERIC_ALLOCATOR
+	case SNDRV_DMA_TYPE_DEV_IRAM:
+#endif
+	case SNDRV_DMA_TYPE_DEV:
+		return dma_mmap_coherent(dmab->dev.dev, vma,
+					 dmab->area, dmab->addr,
+					 vma->vm_end - vma->vm_start);
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	case SNDRV_DMA_TYPE_DEV_SG:
+#endif
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+
+		sgt = snd_pcm_dmabuf_to_sgt(obj);
+		if (IS_ERR(sgt))
+			return PTR_ERR(sgt);
+
+		for_each_sg(sgt->sgl, sg, sgt->nents, i) {
+			struct page *page = sg_page(sg);
+			unsigned long remainder = vma->vm_end - addr;
+			unsigned long len = sg->length;
+
+			if (offset >= sg->length) {
+				offset -= sg->length;
+				continue;
+			} else if (offset) {
+				page += offset / PAGE_SIZE;
+				len = sg->length - offset;
+				offset = 0;
+			}
+
+			len = min(len, remainder);
+			ret = remap_pfn_range(vma, addr, page_to_pfn(page), len,
+					      vma->vm_page_prot);
+			if (ret)
+				return ret;
+
+			addr += len;
+			if (addr >= vma->vm_end)
+				return 0;
+		}
+		fallthrough;
+
+	default:
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+static void snd_pcm_dmabuf_release(struct dma_buf *dmabuf)
+{
+	struct pcm_dmabuf_object *obj = dmabuf->priv;
+
+	pr_info("%s: enter\n", __func__);
+	kfree(obj->pages);
+	kfree(obj);
+}
+
+static int snd_pcm_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
+					   enum dma_data_direction direction)
+{
+	struct pcm_dmabuf_object *obj = dmabuf->priv;
+	struct snd_dma_buffer *dmab = obj->dmab;
+	int type = dmab->dev.type;
+	struct pcm_dmabuf_attachment *pcm_attach;
+
+	switch (type) {
+#ifdef CONFIG_GENERIC_ALLOCATOR
+	case SNDRV_DMA_TYPE_DEV_IRAM:
+#endif
+	case SNDRV_DMA_TYPE_DEV:
+		/* Memory types are uncacheable, nothing need to do. */
+		return 0;
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	case SNDRV_DMA_TYPE_DEV_SG:
+#endif
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		mutex_lock(&obj->lock);
+
+		list_for_each_entry(pcm_attach, &obj->attachments, list) {
+			dma_sync_sg_for_cpu(pcm_attach->dev,
+					    pcm_attach->sgt->sgl,
+					    pcm_attach->sgt->nents,
+					    direction);
+		}
+
+		mutex_unlock(&obj->lock);
+		break;
+
+	default:
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+static int snd_pcm_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
+					 enum dma_data_direction direction)
+{
+	struct pcm_dmabuf_object *obj = dmabuf->priv;
+	struct snd_dma_buffer *dmab = obj->dmab;
+	struct pcm_dmabuf_attachment *pcm_attach;
+	int type = dmab->dev.type;
+
+	switch (type) {
+#ifdef CONFIG_GENERIC_ALLOCATOR
+	case SNDRV_DMA_TYPE_DEV_IRAM:
+#endif
+	case SNDRV_DMA_TYPE_DEV:
+		/* Memory types are uncacheable, nothing need to do. */
+		return 0;
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	case SNDRV_DMA_TYPE_DEV_SG:
+#endif
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		mutex_lock(&obj->lock);
+
+		list_for_each_entry(pcm_attach, &obj->attachments, list) {
+			dma_sync_sg_for_device(pcm_attach->dev,
+					       pcm_attach->sgt->sgl,
+					       pcm_attach->sgt->nents,
+					       direction);
+		}
+
+		mutex_unlock(&obj->lock);
+		break;
+
+	default:
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+static const struct dma_buf_ops snd_pcm_dmabuf_ops =  {
+	.attach = snd_pcm_map_attach,
+	.detach = snd_pcm_map_detach,
+	.map_dma_buf = snd_pcm_map_dmabuf,
+	.unmap_dma_buf = snd_pcm_unmap_dmabuf,
+	.release = snd_pcm_dmabuf_release,
+	.mmap = snd_pcm_dmabuf_mmap,
+	.vmap = snd_pcm_dmabuf_vmap,
+	.vunmap = snd_pcm_dmabuf_vunmap,
+	.begin_cpu_access = snd_pcm_dmabuf_begin_cpu_access,
+	.end_cpu_access = snd_pcm_dmabuf_end_cpu_access,
+};
+
+/**
+ * snd_pcm_dmabuf_export - export one dma buffer associated with a PCM substream
+ * @substream: PCM substream
+ *
+ * Return: a file descriptor for the given dma buffer, otherwise a negative
+ * value on error.
+ */
+static int snd_pcm_dmabuf_export(struct snd_pcm_substream *substream)
+{
+	struct snd_dma_buffer *dmab = &substream->dma_buffer;
+	DEFINE_DMA_BUF_EXPORT_INFO(exp_info);
+	struct pcm_dmabuf_object *obj;
+	int ret;
+
+	pr_err("peter:1\n");
+	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
+	if (!obj) {
+		pr_err("peter: dma_buf_export: ENOMEM 1 error\n");
+		return -ENOMEM;
+	}
+	pr_err("peter:2\n");
+	mutex_init(&obj->lock);
+	INIT_LIST_HEAD(&obj->attachments);
+	obj->dmab = dmab;
+	obj->pages_num = (dmab->bytes + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	pr_err("peter:obj->pages_num :%d dmab->bytes:%zu\n", obj->pages_num, dmab->bytes);
+	obj->pages = kcalloc(obj->pages_num, sizeof(obj->pages[0]), GFP_KERNEL);
+	if (!obj->pages) {
+		pr_err("peter: dma_buf_export: ENOMEM 2 error\n");
+		ret = -ENOMEM;
+		goto alloc_err;
+	}
+	pr_err("peter:3\n");
+	exp_info.ops = &snd_pcm_dmabuf_ops;
+	exp_info.size = dmab->bytes;
+	exp_info.flags = O_RDWR;
+	exp_info.priv = obj;
+
+	obj->dmabuf = dma_buf_export(&exp_info);
+	if (IS_ERR(obj->dmabuf)) {
+		pr_err("peter: dma_buf_export:error\n");
+		ret = PTR_ERR(obj->dmabuf);
+		goto export_err;
+	}
+
+	ret = dma_buf_fd(obj->dmabuf, O_CLOEXEC);
+	if (ret < 0) {
+		pr_err("peter: dma_buf_fd:error\n");
+		goto fd_err;
+	}
+	pr_err("peter: ok\n");
+	return ret;
+
+fd_err:
+	dma_buf_put(obj->dmabuf);
+export_err:
+	kfree(obj->pages);
+alloc_err:
+	kfree(obj);
+	pr_err("peter: error\n");
+	return ret;
+}
+
+/**
+ * snd_pcm_dmabuf_attach - attach one device to the dma buffer
+ * @substream: PCM substream
+ * @fd: file descriptor for the dma buffer
+ *
+ * Add one attachment to the dma buffer and map the scatterlist table of
+ * the attachment into device address space.
+ *
+ * Return: zero if attaching successfully, otherwise a negative value on error.
+ */
+static struct dma_buf_attachment *mmap_attachment[2];
+static int snd_pcm_dmabuf_attach(struct snd_pcm_substream *substream, int fd)
+{
+	enum dma_data_direction dir =
+		substream->stream == SNDRV_PCM_STREAM_PLAYBACK ?
+		DMA_TO_DEVICE : DMA_FROM_DEVICE;
+	struct snd_card *card = substream->pcm->card;
+	struct device *dev = card->dev;
+	struct dma_buf_attachment *attachment;
+	struct pcm_dmabuf_object *obj;
+	struct pcm_dmabuf_attachment *pcm_attach;
+	struct snd_dma_buffer *dmab;
+	struct dma_buf *dmabuf;
+	struct sg_table *sgt;
+	int ret;
+
+	mmap_attachment[substream->stream] = NULL;
+	dmabuf = dma_buf_get(fd);
+	if (IS_ERR(dmabuf))
+		return PTR_ERR(dmabuf);
+
+	attachment = dma_buf_attach(dmabuf, dev);
+	if (IS_ERR(attachment)) {
+		ret = PTR_ERR(attachment);
+		goto err_put;
+	}
+
+	sgt = dma_buf_map_attachment(attachment, dir);
+	if (IS_ERR(sgt)) {
+		ret = PTR_ERR(sgt);
+		goto err_detach;
+	}
+
+	pcm_attach = attachment->priv;
+	pcm_attach->dev = dev;
+	INIT_LIST_HEAD(&pcm_attach->list);
+	obj = dmabuf->priv;
+	dmab = obj->dmab;
+
+	switch (dmab->dev.type) {
+	case SNDRV_DMA_TYPE_CONTINUOUS:
+		substream->runtime->dma_area = dmab->area;
+		substream->runtime->dma_addr = sg_dma_address(sgt->sgl);
+		substream->runtime->dma_bytes = dmab->bytes;
+		break;
+
+#ifdef CONFIG_GENERIC_ALLOCATOR
+	case SNDRV_DMA_TYPE_DEV_IRAM:
+#endif
+	case SNDRV_DMA_TYPE_DEV:
+		substream->runtime->dma_area = dmab->area;
+		substream->runtime->dma_addr = dmab->addr;
+		substream->runtime->dma_bytes = dmab->bytes;
+		break;
+
+#ifdef CONFIG_SND_DMA_SGBUF
+	case SNDRV_DMA_TYPE_DEV_SG:
+		/* TODO: Do not support now */
+		/* fall-through */
+		fallthrough;
+#endif
+
+	default:
+		ret = -ENXIO;
+		goto err_runtime_buf;
+	}
+
+	mmap_attachment[substream->stream] = attachment;
+
+	mutex_lock(&obj->lock);
+	list_add(&pcm_attach->list, &obj->attachments);
+	mutex_unlock(&obj->lock);
+
+	return 0;
+
+err_runtime_buf:
+	dma_buf_unmap_attachment(attachment, sgt, dir);
+err_detach:
+	dma_buf_detach(dmabuf, attachment);
+err_put:
+	dma_buf_put(dmabuf);
+
+	return ret;
+}
+
+/**
+ * snd_pcm_dmabuf_detach - detach the given attachment from dma buffer
+ * @substream: PCM substream
+ */
+static void snd_pcm_dmabuf_detach(struct snd_pcm_substream *substream)
+{
+	struct dma_buf_attachment *attachment = mmap_attachment[substream->stream];
+	struct pcm_dmabuf_attachment *pcm_attach;
+	struct pcm_dmabuf_object *obj;
+	struct dma_buf *dmabuf;
+
+	if (!attachment)
+		return;
+
+	pcm_attach = attachment->priv;
+	dmabuf = attachment->dmabuf;
+	obj = dmabuf->priv;
+
+	mutex_lock(&obj->lock);
+	list_del(&pcm_attach->list);
+	mutex_unlock(&obj->lock);
+
+	dma_buf_unmap_attachment(attachment, pcm_attach->sgt, pcm_attach->dir);
+	dma_buf_detach(dmabuf, attachment);
+	dma_buf_put(dmabuf);
+	mmap_attachment[substream->stream] = NULL;
+}
+/* end of dmabuf */
+
 #define SPRD_PCM_CHANNEL_MAX 2
 #define VBC_AUDRCD_FULL_WATERMARK 160
 
@@ -584,6 +1113,13 @@ static int sprd_pcm_close(struct snd_soc_component *component, struct snd_pcm_su
 		rtd->is_access_enabled = false;
 	}
 	mutex_unlock(&pm_dma->pm_mtx_cnt);
+
+	if (asoc_rtd_to_cpu(srtd, 0)->id == FE_DAI_ID_NORMAL_AP23) {
+		pr_info("%s: AP23 for Aaudio\n", __func__);
+
+		snd_pcm_dmabuf_detach(substream);
+	}
+
 	if (is_no_pcm_dai(asoc_rtd_to_cpu(srtd, 0)->id)) {
 		devm_kfree(dev, rtd);
 		return 0;
@@ -1456,17 +1992,37 @@ static snd_pcm_uframes_t sprd_pcm_pointer(struct snd_soc_component *component,
 	return x;
 }
 
+extern void sprd_mmap_fd_set(int mmap_fd);
 static int sprd_pcm_mmap(struct snd_soc_component *component,
 				struct snd_pcm_substream *substream,
 				struct vm_area_struct *vma)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_soc_pcm_runtime *srtd = substream->private_data;
+	int ret, mmap_fd = -1;
+
+	pr_info("%s: enter\n", __func__);
 
 	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 
-	return remap_pfn_range(vma, vma->vm_start,
-			       runtime->dma_addr >> PAGE_SHIFT,
-			       vma->vm_end - vma->vm_start, vma->vm_page_prot);
+	ret = remap_pfn_range(vma, vma->vm_start,
+				   runtime->dma_addr >> PAGE_SHIFT,
+				   vma->vm_end - vma->vm_start, vma->vm_page_prot);
+
+	if (asoc_rtd_to_cpu(srtd, 0)->id == FE_DAI_ID_NORMAL_AP23) {
+		mmap_fd = snd_pcm_dmabuf_export(substream);
+		if (mmap_fd < 0) {
+			pr_info("%s: dmabuf export error, ret=%d\n", __func__, ret);
+			return mmap_fd;
+		}
+		snd_pcm_dmabuf_attach(substream, mmap_fd);
+		sprd_mmap_fd_set(mmap_fd);
+		pr_info("%s: AP23 for Aaudio, mmap_fd=%d, ret =%d\n",
+				__func__, mmap_fd, ret);
+		return 0;
+	}
+
+	return ret;
 }
 
 static u32 test_ddr_buffer_size;

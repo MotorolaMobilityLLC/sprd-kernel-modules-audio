@@ -16,11 +16,14 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/pcm.h>
+#include <sound/hwdep.h>
 #include <uapi/sound/asound.h>
 
 #include "dfm.h"
 #include "sprd-asoc-card-utils.h"
 #include "sprd-asoc-common.h"
+
+#define SNDRV_HWDEP_IOCTL_MMAP_FD	_IOW('H', 0x04, int)
 
 static struct sprd_dfm_priv priv_dfm;
 struct sprd_dfm_priv dfm_priv_get(void)
@@ -94,6 +97,78 @@ static struct snd_soc_ops sprd_dai_link_ops[] = {
 	{.hw_params = dfm_params,},	/* dfm_ops */
 };
 
+static int sprd_mmap_fd = -1;
+void sprd_mmap_fd_set(int mmap_fd)
+{
+	sprd_mmap_fd = mmap_fd;
+}
+EXPORT_SYMBOL(sprd_mmap_fd_set);
+
+#if (defined(CONFIG_SND_HWDEP))
+static int sprd_hwdep_open(struct snd_hwdep *hw, struct file *file)
+{
+	pr_info("%s: enter\n", __func__);
+	return 0;
+}
+
+static int sprd_hwdep_ioctl(struct snd_hwdep *hw, struct file *file,
+			       unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	int __user *_mmap_fd = NULL;
+
+	pr_info("%s: enter\n", __func__);
+
+	switch (cmd) {
+	case SNDRV_HWDEP_IOCTL_MMAP_FD:
+		_mmap_fd = (int __user *)arg;
+
+		if (put_user(sprd_mmap_fd, _mmap_fd)) {
+			pr_err("%s: error copying fd\n", __func__);
+			return -EFAULT;
+		}
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	pr_info("%s: exit, ret=%d\n", __func__, ret);
+	return ret;
+}
+
+static int sprd_hwdep_close(struct snd_hwdep *hw, struct file *file)
+{
+	pr_info("%s: enter\n", __func__);
+	return 0;
+}
+
+static int sprd_add_hwdep_dev(struct snd_soc_card *card)
+{
+	struct snd_hwdep *hwdep;
+	int rc = 0;
+
+	pr_info("%s: enter\n", __func__);
+	rc = snd_hwdep_new(card->snd_card, "SPRD_HWDEP", 0, &hwdep);
+	if (!hwdep || rc < 0) {
+		pr_err("%s: failed to create hwdep, rc = %d\n", __func__, rc);
+		return rc;
+	}
+
+	strcpy(hwdep->name, "SPRD_HWDEP");
+	hwdep->iface = SNDRV_HWDEP_IFACE_FW_DICE;
+	hwdep->private_data = NULL;
+	hwdep->exclusive = true;
+	hwdep->ops.open = sprd_hwdep_open;
+	hwdep->ops.ioctl = sprd_hwdep_ioctl;
+	hwdep->ops.ioctl_compat = sprd_hwdep_ioctl;
+	hwdep->ops.release = sprd_hwdep_close;
+
+	pr_info("%s: exit\n", __func__);
+	return 0;
+}
+#endif
+
 static int vbc_rxpx_codec_sc27xx_late_probe(struct snd_soc_card *card)
 {
 	sprd_asoc_board_comm_late_probe(card);
@@ -102,6 +177,9 @@ static int vbc_rxpx_codec_sc27xx_late_probe(struct snd_soc_card *card)
 	snd_soc_dapm_ignore_suspend(&card->dapm, "inter Spk PA");
 	snd_soc_dapm_ignore_suspend(&card->dapm, "inter Ear PA");
 
+#if (defined(CONFIG_SND_HWDEP))
+	sprd_add_hwdep_dev(card);
+#endif
 	return 0;
 }
 

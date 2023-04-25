@@ -3449,7 +3449,7 @@ static const struct snd_soc_dapm_widget sprd_codec_dapm_widgets[] = {
 	SND_SOC_DAPM_DAC_E("DAC", "Normal-Playback",
 			   FUN_REG(SPRD_CODEC_PLAYBACK), 0, 0, chan_event,
 			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_DAC_E("DAC", "Normal-Playback-AP23",
+	SND_SOC_DAPM_DAC_E("DAC AP23", "Normal-Playback-AP23",
 			   FUN_REG(SPRD_CODEC_PLAYBACK), 0, 0, chan_event,
 			   SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 	SND_SOC_DAPM_PGA_S("Digital DACL Switch", -4, SOC_REG(AUD_TOP_CTL),
@@ -3698,9 +3698,12 @@ static const struct snd_soc_dapm_route sprd_codec_intercon[] = {
 
 /* DA route */
 	{"DAC", NULL, "CLK_DAC"},
+	{"DAC AP23", NULL, "CLK_DAC"},
 
 	{"Digital DACL Switch", NULL, "DAC"},
 	{"Digital DACR Switch", NULL, "DAC"},
+	{"Digital DACL Switch", NULL, "DAC AP23"},
+	{"Digital DACR Switch", NULL, "DAC AP23"},
 
 	{"ADie Digital DACL Switch", NULL, "Digital DACL Switch"},
 	{"ADie Digital DACR Switch", NULL, "Digital DACR Switch"},
