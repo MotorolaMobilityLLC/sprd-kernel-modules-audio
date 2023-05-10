@@ -122,6 +122,7 @@ enum SPRD_BE_SWITCH {
 	S_LOOP_P_USB_MCDT,
 	S_LOOP_C_USB_MCDT,
 	S_FM_DSP_USB_MCDT,
+	S_VAD_CAPTURE_DSP,
 	S_SWITCH_CASE_MAX,
 };
 
@@ -286,6 +287,8 @@ static const struct snd_kcontrol_new sprd_audio_be_switch[S_SWITCH_CASE_MAX] = {
 		1, 0),
 	[S_FM_DSP_USB_MCDT] = SOC_DAPM_SINGLE("SWITCH", SND_SOC_NOPM, 0,
 		1, 0),
+	[S_VAD_CAPTURE_DSP] = SOC_DAPM_SINGLE("SWITCH", SND_SOC_NOPM, 0,
+		1, 0),
 };
 
 static const char *get_event_name(int event)
@@ -384,6 +387,9 @@ static const struct snd_soc_dapm_widget sprd_pcm_routing_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("FE_IF_MM_P", "FE_DAI_MM_P", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("DP_DL",
 			"DisplayPort MultiMedia Playback", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("FE_IF_VAD_CAP_DSP_C", "FE_DAI_VAD_CAP_DSP_C",
+		0, SND_SOC_NOPM, 0, 0),
+
 	/* Backend AIF */
 	SND_SOC_DAPM_AIF_IN("BE_IF_NORMAL_AP01_CODEC_P",
 		"BE_DAI_NORMAL_AP01_CODEC_P", 0, SND_SOC_NOPM, 0, 0),
@@ -558,6 +564,8 @@ static const struct snd_soc_dapm_widget sprd_pcm_routing_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("BE_IF_LOOP_USB_P_MCDT", "BE_DAI_LOOP_USB_P_MCDT",
 		0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("BE_IF_LOOP_USB_C_MCDT", "BE_DAI_LOOP_USB_C_MCDT",
+		0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("BE_IF_VAD_CAP_DSP_C", "BE_DAI_VAD_CAP_DSP_C",
 		0, SND_SOC_NOPM, 0, 0),
 
 	/* Switches */
@@ -778,6 +786,8 @@ static const struct snd_soc_dapm_widget sprd_pcm_routing_widgets[] = {
 		0, 0, &sprd_audio_be_switch[S_LOOP_C_USB_MCDT]),
 	SND_SOC_DAPM_SWITCH("S_FM_DSP_USB_MCDT", SND_SOC_NOPM,
 		0, 0, &sprd_audio_be_switch[S_FM_DSP_USB_MCDT]),
+	SND_SOC_DAPM_SWITCH("S_VAD_CAPTURE_DSP", SND_SOC_NOPM,
+		0, 0, &sprd_audio_be_switch[S_VAD_CAPTURE_DSP]),
 };
 
 /*
@@ -1060,6 +1070,9 @@ static const struct snd_soc_dapm_route sprd_pcm_routing_intercon[] = {
 	/* S_FM_DSP_USB_MCDT */
 	{"S_FM_DSP_USB_MCDT", "SWITCH", "FE_IF_FM_DSP_P"},
 	{"BE_IF_FM_DSP_USB_P_MCDT", NULL, "S_FM_DSP_USB_MCDT"},
+	/* S_VAD_CAPTURE_DSP */
+	{"S_VAD_CAPTURE_DSP", "SWITCH", "BE_IF_VAD_CAP_DSP_C"},
+	{"FE_IF_VAD_CAP_DSP_C", NULL, "S_VAD_CAPTURE_DSP"},
 };
 
 static struct snd_soc_component_driver sprd_soc_routing_platform = {

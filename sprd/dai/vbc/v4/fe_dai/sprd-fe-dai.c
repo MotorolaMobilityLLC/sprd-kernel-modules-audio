@@ -62,6 +62,7 @@ static struct sprd_pcm_dma_params vbc_btsco_cap_ap;
 static struct sprd_pcm_dma_params vbc_pcm_recognise_capture_mcdt;
 static struct sprd_pcm_dma_params pcm_voice_play_mcdt;
 static struct sprd_pcm_dma_params pcm_hifi_play_mcdt;
+static struct sprd_pcm_dma_params pcm_dsp_vad_cap_mcdt;
 static const char *stream_to_str(int stream)
 {
 	return (stream == SNDRV_PCM_STREAM_PLAYBACK) ?
@@ -93,6 +94,7 @@ static char *fe_dai_id_str[FE_DAI_ID_MAX] = {
 	[FE_DAI_ID_HIFI_P] = TO_STRING(FE_DAI_ID_HIFI_P),
 	[FE_DAI_ID_HIFI_FAST_P] = TO_STRING(FE_DAI_ID_HIFI_FAST_P),
 	[FE_DAI_ID_MM_P] = TO_STRING(FE_DAI_ID_MM_P),
+	[FE_DAI_ID_VAD_CAPTURE_DSP] = TO_STRING(FE_DAI_ID_VAD_CAPTURE_DSP),
 };
 
 static char *fe_dai_id_aif_name_playback[FE_DAI_ID_MAX] = {
@@ -121,6 +123,7 @@ static char *fe_dai_id_aif_name_playback[FE_DAI_ID_MAX] = {
 	[FE_DAI_ID_HIFI_FAST_P] = NULL,
 	[FE_DAI_ID_DP_P] = "DP_DL",
 	[FE_DAI_ID_MM_P] = "FE_IF_MM_P",
+	[FE_DAI_ID_VAD_CAPTURE_DSP] = NULL,
 };
 
 static char *fe_dai_id_aif_name_capture[FE_DAI_ID_MAX] = {
@@ -148,6 +151,7 @@ static char *fe_dai_id_aif_name_capture[FE_DAI_ID_MAX] = {
 	[FE_DAI_ID_HIFI_P] = NULL,
 	[FE_DAI_ID_HIFI_FAST_P] = NULL,
 	[FE_DAI_ID_MM_P] = NULL,
+	[FE_DAI_ID_VAD_CAPTURE_DSP] = "FE_IF_VAD_CAP_DSP_C",
 };
 
 static const char *fe_dai_id_to_str(int fe_dai_id)
@@ -219,6 +223,9 @@ static void mcdt_dma_deinit(struct snd_soc_dai *fe_dai, int stream)
 	case FE_DAI_ID_HIFI_P:
 	case FE_DAI_ID_MM_P:
 		mcdt_dac_dma_disable(MCDT_CHAN_HIFI_PLAY);
+		break;
+	case FE_DAI_ID_VAD_CAPTURE_DSP:
+		mcdt_adc_dma_disable(MCDT_CHAN_DSP_VAD_CAP);
 		break;
 	}
 }
@@ -310,6 +317,11 @@ static int mcdt_dma_config_init(struct snd_soc_dai *fe_dai, int stream)
 		uid = mcdt_dac_dma_enable(MCDT_CHAN_HIFI_PLAY,
 			MCDT_EMPTY_WMK_HIFI_PLAY);
 		pcm_hifi_play_mcdt.channels[0] = uid;
+		break;
+	case FE_DAI_ID_VAD_CAPTURE_DSP:
+		uid = mcdt_adc_dma_enable(MCDT_CHAN_DSP_VAD_CAP,
+			MCDT_FULL_WMK_DSP_VAD_CAP);
+		pcm_dsp_vad_cap_mcdt.channels[0] = uid;
 		break;
 	}
 
@@ -725,6 +737,17 @@ static void sprd_dma_config(struct snd_pcm_substream *substream,
 			mcdt_dac_dma_phy_addr(MCDT_CHAN_HIFI_PLAY);
 		pcm_hifi_play_mcdt.used_dma_channel_name[0] = "hifi_p";
 		break;
+	case FE_DAI_ID_VAD_CAPTURE_DSP:
+		/* dsp captrue */
+		pcm_dsp_vad_cap_mcdt.name = "DSP_VAD_CAP C";
+		pcm_dsp_vad_cap_mcdt.irq_type = SPRD_DMA_BLK_INT;
+		pcm_dsp_vad_cap_mcdt.desc.datawidth = DMA_SLAVE_BUSWIDTH_4_BYTES;
+		pcm_dsp_vad_cap_mcdt.desc.fragmens_len = MCDT_DSPVADCAP_FRAGMENT;
+		pcm_dsp_vad_cap_mcdt.use_mcdt = 1;
+		pcm_dsp_vad_cap_mcdt.dev_paddr[0] =
+			mcdt_adc_dma_phy_addr(MCDT_CHAN_DSP_VAD_CAP);
+		pcm_dsp_vad_cap_mcdt.used_dma_channel_name[0] = "dspvadcap_c";
+		break;
 	}
 }
 
@@ -799,6 +822,9 @@ struct sprd_pcm_dma_params *get_dma_data_params(struct snd_soc_dai *fe_dai,
 	case FE_DAI_ID_HIFI_P:
 	case FE_DAI_ID_MM_P:
 		dma_data = &pcm_hifi_play_mcdt;
+		break;
+	case FE_DAI_ID_VAD_CAPTURE_DSP:
+		dma_data = &pcm_dsp_vad_cap_mcdt;
 		break;
 	}
 
@@ -1438,6 +1464,23 @@ static struct snd_soc_dai_driver sprd_fe_dais[FE_DAI_ID_MAX] = {
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
 						SNDRV_PCM_FMTBIT_S24_LE |
 						SNDRV_PCM_FMTBIT_S32_LE),
+			.channels_min = 1,
+			.channels_max = 2,
+			.rate_min = 8000,
+			.rate_max = 192000,
+		},
+		.ops = &sprd_fe_dai_ops,
+	},
+	/* 26: FE_DAI_ID_VAD_CAPTURE_DSP */
+	{
+		.id = FE_DAI_ID_VAD_CAPTURE_DSP,
+		.name = TO_STRING(FE_DAI_ID_VAD_CAPTURE_DSP),
+		.probe = fe_dai_probe,
+		.capture = {
+			.stream_name = "FE_DAI_VAD_CAP_DSP_C",
+			.rates = SNDRV_PCM_RATE_CONTINUOUS,
+			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
+						SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
