@@ -1546,6 +1546,11 @@ static int sprd_pcm_request_dma_channel(struct snd_pcm_substream *substream,
 	struct snd_soc_component *platform =
 		snd_soc_rtdcom_lookup(srtd, SPRD_DMAENGINE_PCM_DRV_NAME);
 
+	if (!platform) {
+		pr_err("%s platform failed\n", __func__);
+		return -EINVAL;
+	}
+
 	pm_dma = get_pm_dma();
 	if (!dma_data) {
 		pr_err("ERR: %s, dma_data is NULL!\n", __func__);
