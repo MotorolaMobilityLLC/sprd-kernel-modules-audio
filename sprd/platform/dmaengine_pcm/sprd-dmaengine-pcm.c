@@ -1282,6 +1282,8 @@ static int sprd_pcm_trigger(struct snd_soc_component *component,
 	int ret = 0;
 	int i;
 	struct audio_pm_dma *pm_dma;
+	struct dma_tx_state dma_state;
+	enum dma_status dma_status = DMA_COMPLETE;
 
 	pm_dma = get_pm_dma();
 	sp_asoc_pr_info("%s, %s cpu_dai->id = %d Trigger %s cmd:%d\n", __func__,
@@ -1307,6 +1309,24 @@ static int sprd_pcm_trigger(struct snd_soc_component *component,
 				__func__, -ENODATA, -ENODATA);
 			return -ENODATA;
 		}
+
+		/* if this dma channel was paused, just resume it instead of submitting a new one */
+		for (i = 0; i < rtd->hw_chan; i++) {
+			if (rtd->dma_chn[i]) {
+				dma_status = dmaengine_tx_status(rtd->dma_chn[i], rtd->cookie[i], &dma_state);
+				pr_debug("%s, dma status = %d\n", __func__, dma_status);
+				if (dma_status == DMA_IN_PROGRESS || dma_status == DMA_PAUSED) {
+					pr_info("%s, dma is in progress, resume and break\n", __func__);
+					dmaengine_resume(rtd->dma_chn[i]);
+				}
+			}
+		}
+		if (dma_status == DMA_IN_PROGRESS || dma_status == DMA_PAUSED) {
+			pr_info("pcm Start\n");
+			normal_dma_protect_spin_unlock(substream);
+			break;
+		}
+
 		for (i = 0; i < rtd->hw_chan; i++) {
 			if (rtd->dma_tx_des[i])
 				rtd->cookie[i] = dmaengine_submit(
