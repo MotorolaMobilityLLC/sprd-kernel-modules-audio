@@ -67,6 +67,8 @@
  *
  */
 #define SCI_ADC_GET_VALUE_COUNT (10)
+#define SUPPORT_JACK_TYPE_NC 0
+
 
 #define ABS(x) (((x) < (0)) ? (-(x)) : (x))
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
@@ -2439,19 +2441,32 @@ static int sprd_headset_parse(struct snd_soc_card *card)
 	return ret;
 }
 
-int sprd_headset_soc_probe(struct snd_soc_component *codec)
+int sprd_headset_gpio_set_debounce(struct sprd_headset_platform_data *pdata)
 {
-	int ret, i;
-	struct sprd_headset *hdst;
-	struct platform_device *pdev;
-	struct sprd_headset_platform_data *pdata;
-	struct device *dev; /* digiatal part device */
-	unsigned int adie_chip_id = 0;
-	unsigned long irqflags = 0;
-	struct snd_soc_card *card;
-	int gpio_switch;
-	int gpio_lr;
+	int i;
+	if (!pdata) {
+		pr_err("pdata nnllptr, fail to set debounce\n");
+		return -EINVAL;
+	}
+	for (i = 0; i < HDST_GPIO_EIC_MAX; i++) {
+#if SUPPORT_JACK_TYPE_NC
+		if (pdata->jack_type == JACK_TYPE_NC) {
+			if (i == HDST_GPIO_DET_MIC)
+				continue;
+		}
+#endif
+		gpio_set_debounce(pdata->gpios[i], pdata->dbnc_times[i] * 1000);
+	}
+	return 0;
+}
 
+int sprd_headset_check_and_initialize(struct snd_soc_component *codec,
+	    struct sprd_headset **hdst, struct platform_device **pdev,
+	    struct sprd_headset_platform_data **pdata)
+{
+	struct snd_soc_card *card;
+	unsigned int adie_chip_id = 0;
+	int ret, i;
 	if (!codec) {
 		pr_err("%s codec NULL\n", __func__);
 		return -EINVAL;
@@ -2464,27 +2479,25 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 		pr_err("%s codec->component.card NULL\n", __func__);
 		return -EINVAL;
 	}
-	dev = codec->dev;
 	card = codec->card;
-
 	ret = sprd_headset_parse(card);
 	if (ret) {
 		pr_err("sprd_headset_parse fail %d\n", ret);
 		return ret;
 	}
-	hdst = sprd_hdst;
-	if (!hdst) {
+	*hdst = sprd_hdst;
+	if (!*hdst) {
 		pr_err("%s: sprd_hdset is NULL!\n", __func__);
 		return -EINVAL;
 	}
-	pdev = hdst->pdev;
-	pdata = &hdst->pdata;
-	if (!pdev || !pdata) {
-		pr_err("%s pdev %p, pdata %p\n", __func__, pdev, pdata);
+	*pdev = (*hdst)->pdev;
+	*pdata = &(*hdst)->pdata;
+	if (!*pdev || !*pdata) {
+		pr_err("%s pdev %p, pdata %p\n", __func__, *pdev, *pdata);
 		return -EINVAL;
 	}
 
-	hdst->codec = codec;
+	(*hdst)->codec = codec;
 
 	adie_chip_id = sci_get_ana_chip_id();
 	pr_info("adie chip is 0x%x, 0x%x\n", (adie_chip_id >> 16) & 0xFFFF,
@@ -2492,36 +2505,36 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 
 	headset_detect_reg_init();
 
-	ret = sprd_headset_power_init(hdst);
+	ret = sprd_headset_power_init(*hdst);
 	if (ret) {
 		pr_err("sprd_headset_power_init failed\n");
 		return ret;
 	}
 
 	ret = snd_soc_card_jack_new(card, "Headset Jack",
-		SPRD_HEADSET_JACK_MASK, &hdst->hdst_jack, NULL, 0);
+		SPRD_HEADSET_JACK_MASK, &(*hdst)->hdst_jack, NULL, 0);
 	if (ret) {
 		pr_err("Failed to create headset jack\n");
 		return ret;
 	}
 
 	ret = snd_soc_card_jack_new(card, "Headset Keyboard",
-		SPRD_BUTTON_JACK_MASK, &hdst->btn_jack, NULL, 0);
+		SPRD_BUTTON_JACK_MASK, &(*hdst)->btn_jack, NULL, 0);
 	if (ret) {
 		pr_err("Failed to create button jack\n");
 		return ret;
 	}
 
-	if (pdata->nbuttons > MAX_BUTTON_NUM) {
+	if ((*pdata)->nbuttons > MAX_BUTTON_NUM) {
 		pr_warn("button number in dts is more than %d!\n",
 			MAX_BUTTON_NUM);
-		pdata->nbuttons = MAX_BUTTON_NUM;
+		(*pdata)->nbuttons = MAX_BUTTON_NUM;
 	}
-	for (i = 0; i < pdata->nbuttons; i++) {
+	for (i = 0; i < (*pdata)->nbuttons; i++) {
 		struct headset_buttons *buttons =
-			&pdata->headset_buttons[i];
+			&(*pdata)->headset_buttons[i];
 
-		ret = snd_jack_set_key(hdst->btn_jack.jack,
+		ret = snd_jack_set_key((*hdst)->btn_jack.jack,
 			headset_jack_type_get(i), buttons->code);
 		if (ret) {
 			pr_err("%s: Failed to set code for btn-%d\n",
@@ -2529,27 +2542,112 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 			return ret;
 		}
 	}
+	return 0;
+}
 
-	if (pdata->gpio_switch != 0)
+int sprd_headset_set_gpio_in_out_direction(struct sprd_headset_platform_data *pdata)
+{
+	if (!pdata) {
+		pr_err("pdata nullptr, fail to set gpio direction\n");
+		return -EINVAL;
+	}
+	if (pdata->gpio_switch != 0) {
 		gpio_direction_output(pdata->gpio_switch, 0);
+	}
 	gpio_direction_input(pdata->gpios[HDST_GPIO_DET_L]);
 	gpio_direction_input(pdata->gpios[HDST_GPIO_DET_H]);
 	gpio_direction_input(pdata->gpios[HDST_GPIO_DET_MIC]);
 	gpio_direction_input(pdata->gpios[HDST_GPIO_DET_ALL]);
 	gpio_direction_input(pdata->gpios[HDST_GPIO_BUTTON]);
+	return 0;
+}
+
+unsigned long sprd_headset_chose_irqflags(unsigned int HDST, struct sprd_headset_platform_data *pdata)
+{
+	if (!pdata) {
+		pr_err("pdata nullptr, fail to chose irgflags\n");
+		return -EINVAL;
+	}
+	if (pdata->irq_trigger_levels[HDST]) {
+		return IRQF_TRIGGER_HIGH;
+	}
+	return IRQF_TRIGGER_LOW;
+}
+
+int sprd_headset_config_typec(struct sprd_headset *hdst, struct sprd_headset_platform_data *pdata,
+	    struct platform_device *pdev, struct device *dev)
+{
+	int gpio_switch;
+	int gpio_lr;
+	int ret;
+	if (!pdata || !hdst || !pdev) {
+		pr_err("%s pdata %p, hdst %p, pdev %p\n", __func__, pdata, hdst, pdev);
+		return -EINVAL;
+	}
+
+	gpio_switch = pdata->gpios[HDST_GPIO_SW];
+	gpio_lr = pdata->gpios[HDST_GPIO_TYPEC_LR];
+
+	if (gpio_switch >= 0)
+		gpio_direction_output(gpio_switch, 0);
+
+	headset_irq_detect_all_enable(1, hdst->irq_detect_all);
+	gpio_direction_output(gpio_lr, !pdata->typec_lr_gpio_level);
+	hdst->edev = extcon_get_edev_by_phandle(&pdev->dev, 0);
+	if (IS_ERR(hdst->edev)) {
+		ret = PTR_ERR(hdst->edev);
+		dev_err(dev, "typec analog headset failed to find gpio extcon device, ret %d\n",
+			ret);
+		return ret;
+	}
+
+	/* Register notifier block for type-c headset detecting. */
+	hdst->typec_plug_nb.notifier_call = headset_typec_notifier;
+	hdst->typec_plug_nb.priority = 0;
+	ret = extcon_register_notifier(hdst->edev,
+		EXTCON_JACK_HEADPHONE, &hdst->typec_plug_nb);
+	if (ret != 0) {
+		dev_err(dev,
+			"failed to register extcon HEADPHONE notifier, ret %d\n",
+			ret);
+		return ret;
+	}
+	if (extcon_get_state(hdst->edev, EXTCON_JACK_HEADPHONE)) {
+		hdst->type_status = HEADSET_TYPEC_IN;
+		sprd_headset_typec_work(hdst);
+	}
+	pr_info("%s sup typec true\n",__func__);
+	return 0;
+}
+
+int sprd_headset_soc_probe(struct snd_soc_component *codec)
+{
+	int ret;
+	struct sprd_headset *hdst;
+	struct platform_device *pdev;
+	struct sprd_headset_platform_data *pdata;
+	struct device *dev; /* digiatal part device */
+	unsigned long irqflags = 0;
+
+	ret = sprd_headset_check_and_initialize(codec, &hdst, &pdev, &pdata);
+	if (ret != 0) {
+		return ret;
+	}
+	dev = codec->dev;
+
+	sprd_headset_set_gpio_in_out_direction(pdata);
 
 	hdst->irq_detect_l = gpio_to_irq(pdata->gpios[HDST_GPIO_DET_L]);
 	hdst->irq_detect_h = gpio_to_irq(pdata->gpios[HDST_GPIO_DET_H]);
 	hdst->irq_detect_mic = gpio_to_irq(pdata->gpios[HDST_GPIO_DET_MIC]);
 	hdst->irq_detect_all = gpio_to_irq(pdata->gpios[HDST_GPIO_DET_ALL]);
 	hdst->irq_button = gpio_to_irq(pdata->gpios[HDST_GPIO_BUTTON]);
-	#if 0
+#if SUPPORT_JACK_TYPE_NC
 	if (pdata->jack_type == JACK_TYPE_NC) {
 		gpio_direction_input(pdata->gpios[HDST_GPIO_DET_MIC]);
-		hdst->irq_detect_mic =
-			gpio_to_irq(pdata->gpios[HDST_GPIO_DET_MIC]);
+		hdst->irq_detect_mic =gpio_to_irq(pdata->gpios[HDST_GPIO_DET_MIC]);
 	}
-	#endif
+#endif
 	sema_init(&hdst->sem, 1);
 
 	INIT_DELAYED_WORK(&hdst->btn_work, headset_button_work_func);
@@ -2589,18 +2687,9 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 	mutex_init(&hdst->irq_det_all_lock);
 	mutex_init(&hdst->irq_det_mic_lock);
 
-	for (i = 0; i < HDST_GPIO_EIC_MAX; i++) {
-		#if 0
-		if (pdata->jack_type == JACK_TYPE_NC) {
-			if (i == HDST_GPIO_DET_MIC)
-				continue;
-		}
-		#endif
-		gpio_set_debounce(pdata->gpios[i], pdata->dbnc_times[i] * 1000);
-	}
+	sprd_headset_gpio_set_debounce(pdata);
 
-	irqflags = pdata->irq_trigger_levels[HDST_GPIO_BUTTON] ?
-		IRQF_TRIGGER_HIGH : IRQF_TRIGGER_LOW;
+	irqflags = sprd_headset_chose_irqflags(HDST_GPIO_BUTTON, pdata);
 	ret = devm_request_threaded_irq(
 		dev, hdst->irq_button, NULL, headset_button_irq_handler,
 		irqflags | IRQF_NO_SUSPEND | IRQF_ONESHOT, "headset_button", hdst);
@@ -2614,8 +2703,8 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 
 	irq_set_status_flags(hdst->irq_detect_all, IRQ_DISABLE_UNLAZY);
 
-	irqflags = pdata->irq_trigger_levels[HDST_GPIO_DET_ALL] ?
-		IRQF_TRIGGER_HIGH : IRQF_TRIGGER_LOW;
+	irqflags = sprd_headset_chose_irqflags(HDST_GPIO_DET_ALL, pdata);
+
 	ret = devm_request_threaded_irq(
 		dev, hdst->irq_detect_all, NULL, headset_detect_all_irq_handler,
 		irqflags | IRQF_NO_SUSPEND | IRQF_ONESHOT, "headset_detect", hdst);
@@ -2626,8 +2715,7 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 	}
 
 	if (pdata->jack_type == JACK_TYPE_NC) {
-		irqflags = pdata->irq_trigger_levels[HDST_GPIO_DET_MIC] ?
-			IRQF_TRIGGER_HIGH : IRQF_TRIGGER_LOW;
+		irqflags = sprd_headset_chose_irqflags(HDST_GPIO_DET_MIC, pdata);
 		ret = devm_request_threaded_irq(dev, hdst->irq_detect_mic, NULL,
 			headset_detect_mic_irq_handler,
 			irqflags | IRQF_NO_SUSPEND | IRQF_ONESHOT, "headset_detect_mic", hdst);
@@ -2645,43 +2733,14 @@ int sprd_headset_soc_probe(struct snd_soc_component *codec)
 
 	pr_info("%s ---- \n",__func__);
 	if (hdst->sup_typec == true) {
-		gpio_switch = pdata->gpios[HDST_GPIO_SW];
-		gpio_lr = pdata->gpios[HDST_GPIO_TYPEC_LR];
-
-		if (gpio_switch >= 0)
-			gpio_direction_output(gpio_switch, 0);
-
-		headset_irq_detect_all_enable(1, hdst->irq_detect_all);
-		gpio_direction_output(gpio_lr, !pdata->typec_lr_gpio_level);
-		hdst->edev = extcon_get_edev_by_phandle(&pdev->dev, 0);
-		if (IS_ERR(hdst->edev)) {
-			ret = PTR_ERR(hdst->edev);
-			dev_err(dev, "typec analog headset failed to find gpio extcon device, ret %d\n",
-				ret);
+		ret = sprd_headset_config_typec(hdst, pdata, pdev, dev);
+		if (ret != 0) {
 			goto failed_to_config_typec;
 		}
-
-		/* Register notifier block for type-c headset detecting. */
-		hdst->typec_plug_nb.notifier_call = headset_typec_notifier;
-		hdst->typec_plug_nb.priority = 0;
-		ret = extcon_register_notifier(hdst->edev,
-			EXTCON_JACK_HEADPHONE, &hdst->typec_plug_nb);
-		if (ret) {
-			dev_err(dev,
-				"failed to register extcon HEADPHONE notifier, ret %d\n",
-				ret);
-			goto failed_to_config_typec;
-		}
-		if (extcon_get_state(hdst->edev, EXTCON_JACK_HEADPHONE)) {
-			hdst->type_status = HEADSET_TYPEC_IN;
-			sprd_headset_typec_work(hdst);
-		}
-		pr_info("%s sup typec true\n",__func__);
 	}
 	else{
 	   pr_info("%s sup typec false\n",__func__);
 	}
-
 	return 0;
 
 failed_to_config_typec:
