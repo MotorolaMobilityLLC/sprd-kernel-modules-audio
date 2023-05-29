@@ -880,6 +880,9 @@ static void sprd_button_irq_threshold(int enable)
 	int audio_head_sbut;
 	unsigned long msk, val;
 
+	if (pdata == NULL)
+		return;
+
 	audio_head_sbut = pdata->irq_threshold_button;
 	msk = HEDET_BDET_REF_SEL(0x7);
 	/*
