@@ -96,6 +96,10 @@ struct agdsp_access {
 	uint8_t mbx_core;
 	struct regmap *agcp_ahb;
 	struct regmap *pmu_apb;
+	struct regmap *audcp_glb;
+	struct regmap *audcp_clk_rf;
+	struct regmap *audcp_dvfs_apb_rf;
+	struct regmap *audcp_apb;
 	u32 auto_agcp_access;
 	u32 audcp_pmu_sleep_ctrl_reg;
 	u32 audcp_pmu_sleep_ctrl_deepslp_mask;
@@ -309,6 +313,18 @@ static int sprd_agdsp_pw_on(struct generic_pm_domain *domain)
 
 exit:
 	spin_unlock(&dsp_ac->spin_lock);
+
+	/* change register read from register */
+	if (dsp_ac->audcp_glb)
+		regcache_cache_only(dsp_ac->audcp_glb, false);
+	if (dsp_ac->audcp_clk_rf)
+		regcache_cache_only(dsp_ac->audcp_clk_rf, false);
+	if (dsp_ac->audcp_dvfs_apb_rf)
+		regcache_cache_only(dsp_ac->audcp_dvfs_apb_rf, false);
+	if (dsp_ac->audcp_apb)
+		regcache_cache_only(dsp_ac->audcp_apb, false);
+	udelay(200);
+
 	pr_info("%s, ap_enable_cnt=%d, cp_enable_cnt=%d.cnt=%d\n",
 		__func__, dsp_ac->state->ap_enable_cnt,
 		dsp_ac->state->cp_enable_cnt, cnt);
@@ -327,6 +343,17 @@ static int sprd_agdsp_pw_off(struct generic_pm_domain *domain)
 
 	if (!dsp_ac->ready || !dsp_ac->state)
 		return -EINVAL;
+
+	/* change register read from cache */
+	if (dsp_ac->audcp_glb)
+		regcache_cache_only(dsp_ac->audcp_glb, true);
+	if (dsp_ac->audcp_clk_rf)
+		regcache_cache_only(dsp_ac->audcp_clk_rf, true);
+	if (dsp_ac->audcp_dvfs_apb_rf)
+		regcache_cache_only(dsp_ac->audcp_dvfs_apb_rf, true);
+	if (dsp_ac->audcp_apb)
+		regcache_cache_only(dsp_ac->audcp_apb, true);
+	udelay(200);
 
 	spin_lock(&dsp_ac->spin_lock);
 
@@ -495,6 +522,38 @@ static int agdsp_access_initialize(struct platform_device *pdev,
 		pr_info("ap_access_ena:reg:%x,mask:%x\n",
 			args[0], args[1]);
 	}
+
+	regmap = syscon_regmap_lookup_by_phandle(
+		node, "sprd,syscon-agcp-glb");
+	if (IS_ERR(regmap)) {
+		pr_err("ERR: Get the audcp glb syscon failed!\n");
+		dsp_ac->audcp_glb = NULL;
+	} else
+		dsp_ac->audcp_glb = regmap;
+
+	regmap = syscon_regmap_lookup_by_phandle(
+		node, "sprd,syscon-clk-rf");
+	if (IS_ERR(regmap)) {
+		pr_err("ERR: Get the audcp clk rf syscon failed!\n");
+		dsp_ac->audcp_clk_rf = NULL;
+	} else
+		dsp_ac->audcp_clk_rf = regmap;
+
+	regmap = syscon_regmap_lookup_by_phandle(
+		node, "sprd,syscon-dvfs-apb");
+	if (IS_ERR(regmap)) {
+		pr_err("ERR: Get the audcp dvfs apb rf syscon failed!\n");
+		dsp_ac->audcp_dvfs_apb_rf = NULL;
+	} else
+		dsp_ac->audcp_dvfs_apb_rf = regmap;
+
+	regmap = syscon_regmap_lookup_by_phandle(
+		node, "sprd,syscon-agcp-apb");
+	if (IS_ERR(regmap)) {
+		pr_err("ERR: Get the audcp apb syscon failed!\n");
+		dsp_ac->audcp_apb = NULL;
+	} else
+		dsp_ac->audcp_apb = regmap;
 
 	dsp_ac->smem_size = sizeof(struct agdsp_access_state);
 	dsp_ac->smem_phy_addr = smem_alloc(SIPC_ID_PSCP, dsp_ac->smem_size);
