@@ -10,6 +10,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/sipc.h>
+#include <linux/pm_runtime.h>
 
 #include "audio-sipc.h"
 #include "sprd_audcp_dvfs.h"
@@ -161,15 +162,25 @@ static ssize_t hw_dvfs_enable_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_ENABLE, &hw_en,
 				  sizeof(struct audcp_hw_dvfs_enable),
 				  &hw_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%u\n", hw_en_out.enable);
 }
 
@@ -198,15 +209,25 @@ static ssize_t hw_dvfs_enable_store(struct device *dev,
 	else
 		hw_en.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_ENABLE, &hw_en,
 				  sizeof(struct audcp_hw_dvfs_enable),
 				  &hw_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -241,14 +262,26 @@ static ssize_t audcp_running_mode_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_RUNNING_MODE, &run_mode,
 				  sizeof(struct running_mode),
 				  &run_mode_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	if (run_mode_out.mode > AUDCP_RUNNING_MODE_MAX) {
 		dev_err(dev, "audio cp returned invalid running mode\n");
 		return -EINVAL;
@@ -282,14 +315,27 @@ static ssize_t audcp_running_mode_store(struct device *dev,
 		return -EINVAL;
 	}
 	run_mode.mode = mode;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_RUNNING_MODE, &run_mode,
 				  sizeof(struct running_mode),
 				  &run_mode_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	if (run_mode_out.mode > AUDCP_RUNNING_MODE_MAX) {
 		dev_err(dev, "audio cp returned invalid running mode\n");
 		return -EINVAL;
@@ -315,13 +361,25 @@ static ssize_t table_info_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_TABLE,
 				  &table, sizeof(struct audcp_dvfs_table),
 				  &table_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	index_cnt = table_out.total_index_cnt;
 	if (index_cnt >= AUDCP_DVFS_TABLE_MAX) {
 		dev_err(dev, "invalid index count\n");
@@ -356,13 +414,24 @@ static ssize_t running_record_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_RECORD,
 				  &record, sizeof(struct audcp_records),
 				  &record_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	if (record_out.total_index_cnt >= AUDCP_DVFS_TABLE_MAX)
 		return sprintf(buf, "invalid total index count\n");
@@ -412,14 +481,26 @@ static ssize_t fixed_voltage_show(struct device *dev,
 	if (!data->user_data.fixed_voltage_set)
 		return sprintf(buf, "please set fixed valtatge first\n");
 	fixed_voltage.enabled = 1;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_FIXED_VOLTAGE, &fixed_voltage,
 				  sizeof(struct dvfs_fixed_voltage),
 				  &fixed_voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 
 	if (fixed_voltage_out.voltage >= AUDCP_VOLTAGE_MAX)
 		return sprintf(buf, "invalid voltage index from audio cp %u\n",
@@ -462,15 +543,26 @@ static ssize_t fixed_voltage_store(struct device *dev,
 
 	fixed_voltage.enabled = 1;
 	fixed_voltage.voltage = voltage_idx;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_FIXED_VOLTAGE, &fixed_voltage,
 				  sizeof(struct dvfs_fixed_voltage),
 				  &fixed_voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	data->user_data.fixed_voltage_set = 1;
 
 	return count;
@@ -533,13 +625,24 @@ static ssize_t auto_dvfs_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_AUTO,
 				  &auto_en, sizeof(struct audcp_dvfs_auto),
 				  &auto_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%u\n", auto_en_out.enable);
 }
 
@@ -569,14 +672,24 @@ static ssize_t auto_dvfs_store(struct device *dev,
 	else
 		auto_en.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_SET_AUTO,
 				  &auto_en, sizeof(struct audcp_dvfs_auto),
 				  &auto_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -596,15 +709,25 @@ static ssize_t force_dvfs_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_DVFS_FORCE_EN, &force_en,
 				  sizeof(struct audcp_dvfs_force_en),
 				  &force_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%u\n", force_en_out.enable);
 }
 
@@ -634,15 +757,25 @@ static ssize_t force_dvfs_store(struct device *dev,
 	else
 		force_en.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_DVFS_FORCE_EN, &force_en,
 				  sizeof(struct audcp_dvfs_force_en),
 				  &force_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -662,15 +795,25 @@ static ssize_t hold_fsm_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_HOLD, &hold_en,
 				  sizeof(struct audcp_dvfs_hold),
 				  &hold_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%u\n", hold_en_out.enable);
 }
 
@@ -700,15 +843,25 @@ static ssize_t hold_fsm_store(struct device *dev,
 	else
 		hold_en.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_HOLD, &hold_en,
 				  sizeof(struct audcp_dvfs_hold),
 				  &hold_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -728,15 +881,25 @@ static ssize_t audcp_sys_busy_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_SYS_DVFS_BUSY, &busy,
 				  sizeof(struct audcp_dvfs_busy),
 				  &busy_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%u\n", busy_out.enable);
 }
 
@@ -756,15 +919,25 @@ static ssize_t window_cnt_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_WINDOW_CNT, &win_cnt,
 				  sizeof(struct audcp_dvfs_window_cnt),
 				  &win_cnt_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", win_cnt_out.count);
 }
 
@@ -784,15 +957,25 @@ static ssize_t dvfs_status_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_AUDCP_DVFS_STATUS, &status,
 				  sizeof(struct audcp_dvfs_status),
 				  &status_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", status_out.status);
 }
 
@@ -812,14 +995,26 @@ static ssize_t current_voltage_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_CURRENT_VOLTAGE, &cur_voltage,
 				  sizeof(struct audcp_dvfs_current_voltage),
 				  &cur_voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	if (cur_voltage_out.voltage > AUDCP_VOLTAGE_MAX)
 		return sprintf(buf, "invalid voltage index %d\n",
 			      cur_voltage_out.voltage);
@@ -844,6 +1039,12 @@ static ssize_t vote_voltage_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_INTERNAL_VOTE_VOLTAGE,
 				  &vote_voltage,
@@ -851,8 +1052,14 @@ static ssize_t vote_voltage_show(struct device *dev,
 				  &vote_voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
+
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
+
 	if (vote_voltage_out.voltage > AUDCP_VOLTAGE_MAX)
 		return sprintf(buf, "invalid  voltage index %d\n",
 			      vote_voltage_out.voltage);
@@ -878,15 +1085,25 @@ static ssize_t voltage_meet_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_AUDCP_SYS_VOLTAGE_MEET, &meet,
 				  sizeof(struct audcp_sys_voltage_meet),
 				  &meet_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", meet_out.meeted);
 }
 
@@ -907,6 +1124,12 @@ static ssize_t voltage_meet_bypass_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_AUDCP_SYS_VOLTAGE_MEET_BYP,
 				  &meet_byp,
@@ -914,9 +1137,13 @@ static ssize_t voltage_meet_bypass_show(struct device *dev,
 				  &meet_byp_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", meet_byp.meet_bypass);
 }
 
@@ -946,6 +1173,12 @@ static ssize_t voltage_meet_bypass_store(struct device *dev,
 	else
 		bypass_en.meet_bypass = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_AUDCP_SYS_VOLTAGE_MEET_BYP,
 				  &bypass_en,
@@ -953,9 +1186,13 @@ static ssize_t voltage_meet_bypass_store(struct device *dev,
 				  &bypass_en_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -975,15 +1212,25 @@ static ssize_t audcp_idle_voltage_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_AUDCP_SYS_IDLE_VOLTAGE, &voltage,
 				  sizeof(struct audcp_sys_idle_voltage),
 				  &voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", voltage_out.voltage);
 }
 
@@ -1013,15 +1260,25 @@ static ssize_t audcp_idle_voltage_store(struct device *dev,
 	else
 		voltage.voltage = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_AUDCP_SYS_IDLE_VOLTAGE, &voltage,
 				  sizeof(struct audcp_sys_idle_voltage),
 				  &voltage_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1041,14 +1298,24 @@ static ssize_t sw_tune_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_SW_TUNE_EN, &sw_tune,
 				  sizeof(struct sw_tune_en), &sw_tune_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", sw_tune_out.enable);
 }
 
@@ -1078,14 +1345,24 @@ static ssize_t sw_tune_store(struct device *dev,
 	else
 		sw_tune.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_SW_TUNE_EN, &sw_tune,
 				  sizeof(struct sw_tune_en), &sw_tune_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1105,15 +1382,25 @@ static ssize_t sw_dvfs_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_GET_AUDCP_SW_DVFS_ENABLE, &sw_dvfs,
 				  sizeof(struct audcp_sw_dvfs_enable),
 				  &sw_dvfs_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x\n", sw_dvfs_out.enable);
 }
 
@@ -1143,15 +1430,25 @@ static ssize_t sw_dvfs_store(struct device *dev,
 	else
 		sw_dvfs.enable = 0;
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0,
 				  AUDDVFS_SET_AUDCP_SW_DVFS_ENABLE, &sw_dvfs,
 				  sizeof(struct audcp_sw_dvfs_enable),
 				  &sw_dvfs_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1171,14 +1468,25 @@ static ssize_t dvfs_register_show(struct device *dev,
 		return ret;
 	}
 	reg_val.reg = data->user_data.reg;
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_REG,
 				  &reg_val, sizeof(struct audcp_reg),
 				  &reg_val_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "%#x:%#x\n", reg_val_out.reg, reg_val_out.val);
 }
 
@@ -1208,16 +1516,26 @@ static ssize_t dvfs_register_store(struct device *dev,
 	 */
 	dev_warn(dev, "audio cp dvfs it may be a danger hols, just for debug !!!!!");
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_SET_REG,
 				  &reg_val, sizeof(struct audcp_reg),
 				  &reg_val_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return -EINVAL;
 	}
 
 	data->user_data.reg = reg_val_out.reg;
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1237,6 +1555,13 @@ static ssize_t index_show(struct device *dev, struct device_attribute *attr,
 		dev_err(dev, "enable audcp ipc failed\n");
 		return ret;
 	}
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	/* init for invalid value, update by audio dsp */
 	index_out.index = AUDDVFS_INDEX_MAX;
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_INDEX,
@@ -1244,9 +1569,13 @@ static ssize_t index_show(struct device *dev, struct device_attribute *attr,
 				  &index_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "index %u\n", index_out.index);
 }
 
@@ -1275,15 +1604,26 @@ static ssize_t index_store(struct device *dev,
 		dev_err(dev, "invalid index\n");
 		return -EINVAL;
 	}
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	index.index = val;
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_SET_INDEX,
 				  &index, sizeof(struct audcp_dvfs_index),
 				  &index_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1303,6 +1643,12 @@ static ssize_t idle_index_show(struct device *dev,
 		return ret;
 	}
 
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	/* init for invalid value, update by audio dsp */
 	index_out.index = AUDDVFS_INDEX_MAX;
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_GET_IDLE_INDEX,
@@ -1310,9 +1656,13 @@ static ssize_t idle_index_show(struct device *dev,
 				  &index_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return sprintf(buf, "index %u\n", index_out.index);
 }
 
@@ -1341,15 +1691,26 @@ static ssize_t idle_index_store(struct device *dev,
 		dev_err(dev, "invalid index\n");
 		return -EINVAL;
 	}
+
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0) {
+		pr_err("%s, agdsp_access_enable failed!\n", __func__);
+		return ret;
+	}
+
 	index.index = val;
 	ret = aud_send_cmd_result(data->channel, 0, 0, AUDDVFS_SET_IDLE_INDEX,
 				  &index, sizeof(struct audcp_dvfs_index),
 				  &index_out, -1);
 	if (ret != 0) {
 		dev_err(dev, "aud_send_cmd failed\n");
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
 		return ret;
 	}
 
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 	return count;
 }
 
@@ -1440,6 +1801,10 @@ static int audcp_dvfs_probe(struct platform_device *pdev)
 		return err;
 	}
 	data->dev_sys = dev;
+
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	dev_info(&pdev->dev, "<-- agdsp_pd is enabled for audcp_dvfs device now\n");
 
 	return err;
 }
