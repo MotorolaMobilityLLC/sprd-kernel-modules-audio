@@ -7548,9 +7548,9 @@ static int normal_suspend(struct snd_soc_component *component)
 	for_each_component_dais(component, dai) {
 		if (snd_soc_dai_stream_active(dai, SNDRV_PCM_STREAM_PLAYBACK) &&
 			sprd_is_normal_scene(dai->id) && !is_normal_scene) {
-
 			is_normal_scene = true;
 			pr_info("%s, normal_playback suspend now\n", __func__);
+			break;
 		}
 	}
 
@@ -7560,7 +7560,7 @@ static int normal_suspend(struct snd_soc_component *component)
 		if (normal_p_suspend_resume_get_ref() == 1) {
 			only_play = is_only_normal_p_scene();
 			if (only_play) {
-				vbc_normal_suspend(dai->dev);
+				vbc_normal_suspend(component->dev);
 				pm_vbc->suspend_resume = true;
 			}
 		}
@@ -7585,9 +7585,9 @@ static int normal_resume(struct snd_soc_component *component)
 	for_each_component_dais(component, dai) {
 		if (snd_soc_dai_stream_active(dai, SNDRV_PCM_STREAM_PLAYBACK) &&
 			sprd_is_normal_scene(dai->id) && !is_normal_scene) {
-
 			is_normal_scene = true;
 			pr_info("%s, normal_playback resume now\n", __func__);
+			break;
 		}
 	}
 
@@ -7598,7 +7598,7 @@ static int normal_resume(struct snd_soc_component *component)
 			only_play = is_only_normal_p_scene();
 			if (only_play) {
 				if (pm_vbc->suspend_resume) {
-					vbc_normal_resume(dai->dev);
+					vbc_normal_resume(component->dev);
 					pm_vbc->suspend_resume = false;
 				}
 			}
