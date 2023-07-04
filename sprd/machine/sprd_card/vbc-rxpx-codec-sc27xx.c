@@ -145,7 +145,7 @@ static int sprd_hwdep_close(struct snd_hwdep *hw, struct file *file)
 
 static int sprd_add_hwdep_dev(struct snd_soc_card *card)
 {
-	struct snd_hwdep *hwdep;
+	struct snd_hwdep *hwdep = NULL;
 	int rc = 0;
 
 	pr_info("%s: enter\n", __func__);
