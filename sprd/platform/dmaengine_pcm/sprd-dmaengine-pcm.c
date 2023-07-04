@@ -100,7 +100,9 @@ static void snd_pcm_map_detach(struct dma_buf *dma_buf,
 	}
 
 	kfree(sgt);
+	sgt = NULL;
 	kfree(pcm_attach);
+	pcm_attach = NULL;
 	attach->priv = NULL;
 }
 
@@ -163,6 +165,7 @@ static struct sg_table *snd_pcm_dmabuf_to_sgt(struct pcm_dmabuf_object *obj)
 
 error:
 	kfree(sgt);
+	sgt = NULL;
 	return ERR_PTR(ret);
 }
 
@@ -193,6 +196,7 @@ static struct sg_table *snd_pcm_map_dmabuf(struct dma_buf_attachment *attach,
 	if (!ret) {
 		sg_free_table(sgt);
 		kfree(sgt);
+		sgt = NULL;
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -252,28 +256,32 @@ static int snd_pcm_dmabuf_mmap(struct dma_buf *dma_buf,
 			return PTR_ERR(sgt);
 
 		for_each_sg(sgt->sgl, sg, sgt->nents, i) {
-			struct page *page = sg_page(sg);
-			unsigned long remainder = vma->vm_end - addr;
-			unsigned long len = sg->length;
+			if (sg == NULL)
+				break;
+			else {
+				struct page *page = sg_page(sg);
+				unsigned long remainder = vma->vm_end - addr;
+				unsigned long len = sg->length;
 
-			if (offset >= sg->length) {
-				offset -= sg->length;
-				continue;
-			} else if (offset) {
-				page += offset / PAGE_SIZE;
-				len = sg->length - offset;
-				offset = 0;
-			}
+				if (offset >= sg->length) {
+					offset -= sg->length;
+					continue;
+				} else if (offset) {
+					page += offset / PAGE_SIZE;
+					len = sg->length - offset;
+					offset = 0;
+				}
 
-			len = min(len, remainder);
-			ret = remap_pfn_range(vma, addr, page_to_pfn(page), len,
+				len = min(len, remainder);
+				ret = remap_pfn_range(vma, addr, page_to_pfn(page), len,
 					      vma->vm_page_prot);
-			if (ret)
-				return ret;
+				if (ret)
+					return ret;
 
-			addr += len;
-			if (addr >= vma->vm_end)
-				return 0;
+				addr += len;
+				if (addr >= vma->vm_end)
+					return 0;
+			}
 		}
 		fallthrough;
 
@@ -290,7 +298,9 @@ static void snd_pcm_dmabuf_release(struct dma_buf *dmabuf)
 
 	pr_info("%s: enter\n", __func__);
 	kfree(obj->pages);
+	obj->pages = NULL;
 	kfree(obj);
+	obj = NULL;
 }
 
 static int snd_pcm_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
@@ -441,8 +451,10 @@ fd_err:
 	dma_buf_put(obj->dmabuf);
 export_err:
 	kfree(obj->pages);
+	obj->pages = NULL;
 alloc_err:
 	kfree(obj);
+	obj = NULL;
 	pr_err("peter: error\n");
 	return ret;
 }
