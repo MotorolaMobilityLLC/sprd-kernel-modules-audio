@@ -1834,6 +1834,27 @@ int dsp_audio_ns_set(u32 value)
 	return ret;
 }
 
+/***********************************************************
+ * cmd for SND_KCTL_TYPE_VOICE_VOLUME_RAMP_SET
+ ***********************************************************/
+int dsp_voice_volume_ramp_set(u32 value)
+{
+	int ret;
+	u32 voice_volume_ramp_value = value;
+
+	pr_info("%s value = %d", __func__, value);
+
+	ret = aud_send_cmd(AMSG_CH_VBC_CTL,
+		SND_KCTL_TYPE_VOICE_VOLUME_RAMP_SET,
+		-1, SND_VBC_DSP_IO_KCTL_SET, &voice_volume_ramp_value,
+		sizeof(voice_volume_ramp_value),
+		AUDIO_SIPC_WAIT_FOREVER);
+	if (ret < 0)
+		pr_err("Failed to set voice_volume_ramp_value, ret %d\n", ret);
+
+	return ret;
+}
+
 int vbc_dsp_cust_dev_set(int dev, int id, int stream)
 {
 	int ret;

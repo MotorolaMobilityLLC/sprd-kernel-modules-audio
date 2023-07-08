@@ -450,6 +450,7 @@ static int get_ivsense_adc_id(void)
 #define MIXERDG_MAX_VAL (0xffff)
 #define MIXERDG_STP_MAX_VAL (0xffff)
 #define OFFLOAD_DG_MAX (4096)
+#define VOICE_VOLUME_DG_MAX (4096)
 #define MAX_32_BIT (0xffffffff)
 #define MAX_12_BIT (0xfff)
 #define SRC_MAX_VAL (48000)
@@ -785,6 +786,9 @@ static int vbc_dg_put(struct snd_kcontrol *kcontrol,
 
 	if (id == OFFLOAD_DG &&
 	    (val1 > OFFLOAD_DG_MAX || val2 > OFFLOAD_DG_MAX))
+		return -EINVAL;
+	if (id == VOICE_VOLUME_DG &&
+	    (val1 > VOICE_VOLUME_DG_MAX || val2 > VOICE_VOLUME_DG_MAX))
 		return -EINVAL;
 
 	vbc_codec->dg[id].dg_id = id;
@@ -5015,6 +5019,36 @@ static int dsp_audio_ns_enable_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int dsp_voice_volume_ramp_enable_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->voice_volume_ramp_set;
+	pr_info("%s value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int dsp_voice_volume_ramp_enable_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	u32 value;
+	int ret;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	value = ucontrol->value.enumerated.item[0];
+	pr_info("%s value = %d\n", __func__, value);
+
+	vbc_codec->voice_volume_ramp_set = value;
+	ret = dsp_voice_volume_ramp_set(value);
+	if (ret != 0)
+		pr_err("%s set voice_volume_ramp_set failed %d\n", __func__, ret);
+	return 0;
+}
+
 /* -9450dB to 0dB in 150dB steps ( mute instead of -9450dB) */
 static const DECLARE_TLV_DB_SCALE(mdg_tlv, -9450, 150, 1);
 static const DECLARE_TLV_DB_SCALE(dg_tlv, -9450, 150, 1);
@@ -5023,6 +5057,7 @@ static const DECLARE_TLV_DB_SCALE(smthdg_step_tlv, -9450, 150, 1);
 static const DECLARE_TLV_DB_SCALE(mixerdg_tlv, -9450, 150, 1);
 static const DECLARE_TLV_DB_SCALE(mixerdg_step_tlv, -9450, 150, 1);
 static const DECLARE_TLV_DB_SCALE(offload_dg_tlv, 0, 150, 1);
+static const DECLARE_TLV_DB_SCALE(voice_volume_dg_tlv, 0, 150, 1);
 static const DECLARE_TLV_DB_SCALE(hpg_tlv, -9450, 150, 0);
 
 static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
@@ -5108,6 +5143,10 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 			     0, 1, OFFLOAD_DG, OFFLOAD_DG_MAX, 0,
 			     vbc_dg_get,
 			     vbc_dg_put, offload_dg_tlv),
+	SOC_DOUBLE_R_EXT_TLV("VOICE VOLUME DG Set",
+			     0, 1, VOICE_VOLUME_DG, VOICE_VOLUME_DG_MAX, 0,
+			     vbc_dg_get,
+			     vbc_dg_put, voice_volume_dg_tlv),
 	/* SMTHDG */
 	SOC_DOUBLE_R_EXT_TLV("VBC_SMTHDG_DAC0",
 			     0, 1, VBC_SMTHDG_DAC0, SMTHDG_MAX_VAL, 0,
@@ -5573,6 +5612,8 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 		dsp_audio_aec_enable_get, dsp_audio_aec_enable_put),
 	SOC_SINGLE_BOOL_EXT("AUDIO_NS_SET", 0,
 		dsp_audio_ns_enable_get, dsp_audio_ns_enable_put),
+	SOC_SINGLE_BOOL_EXT("VOICE VOLUME RAMP SET", 0,
+		dsp_voice_volume_ramp_enable_get, dsp_voice_volume_ramp_enable_put),
 };
 
 static u32 vbc_codec_read(struct snd_soc_component *codec,
