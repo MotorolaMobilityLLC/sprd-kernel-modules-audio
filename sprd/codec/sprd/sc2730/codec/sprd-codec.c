@@ -3444,7 +3444,6 @@ static struct snd_soc_dai_ops sprd_codec_dai_ops = {
 	.shutdown = sprd_codec_pcm_hw_shutdown,
 };
 
-#ifdef CONFIG_PM
 static int sprd_codec_soc_suspend(struct snd_soc_component *codec)
 {
 	struct sprd_codec_priv *sprd_codec = snd_soc_component_get_drvdata(codec);
@@ -3453,9 +3452,9 @@ static int sprd_codec_soc_suspend(struct snd_soc_component *codec)
 
 	if (regu && regulator_is_enabled(regu) &&
 	    sprd_codec->startup_cnt == 0) {
-		ret = regulator_set_mode(regu, REGULATOR_MODE_STANDBY);
+		ret = regulator_disable(regu);
 		if (ret < 0) {
-			sp_asoc_pr_info("%s, set mode ret=%d", __func__, ret);
+			sp_asoc_pr_info("%s, regulator disable fail, ret=%d", __func__, ret);
 			return ret;
 		}
 		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU0),
@@ -3479,6 +3478,11 @@ static int sprd_codec_soc_resume(struct snd_soc_component *codec)
 	struct regulator *regu = sprd_codec->head_mic;
 	int ret = 0;
 
+	ret = regulator_enable(regu);
+	if (ret < 0) {
+	  sp_asoc_pr_info("%s, regulator enable fail, ret=%d", __func__, ret);
+	  return ret;
+	}
 	if (regu && regulator_is_enabled(regu)) {
 		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU0), BG_EN, BG_EN);
 		ret = snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU1),
@@ -3497,10 +3501,6 @@ static int sprd_codec_soc_resume(struct snd_soc_component *codec)
 	}
 	return 0;
 }
-#else
-#define sprd_codec_soc_suspend NULL
-#define sprd_codec_soc_resume  NULL
-#endif
 
 /*
  * proc interface
