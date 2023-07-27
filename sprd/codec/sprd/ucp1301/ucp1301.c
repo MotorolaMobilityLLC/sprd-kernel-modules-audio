@@ -648,7 +648,9 @@ static void ucp1301_power_param_init(struct ucp1301_t *ucp1301)
 
 static void ucp1301_reg_init(struct ucp1301_t *ucp1301)
 {
+	dev_info(ucp1301->dev, "%s set_agc_vcut\n", __func__);
 	ucp1301_set_agc_vcut(ucp1301, 0x1c9);
+	dev_info(ucp1301->dev, "%s set_agc_mk2\n", __func__);
 	ucp1301_set_agc_mk2(ucp1301, 0x1);
 }
 
@@ -661,7 +663,7 @@ static int ucp1301_hw_on(struct ucp1301_t *ucp1301, bool on)
 		return -EINVAL;
 	}
 
-	dev_dbg(ucp1301->dev, "hw_on, on %d\n", on);
+	dev_info(ucp1301->dev, "hw_on, on %d\n", on);
 	if (on) {
 		gpiod_set_value_cansleep(ucp1301->reset_gpio, true);
 		usleep_range(2000, 2050);
@@ -691,6 +693,7 @@ static int ucp1301_hw_on(struct ucp1301_t *ucp1301, bool on)
 		ucp1301->hw_enabled = false;
 	}
 
+	dev_info(ucp1301->dev, "hw_on, exit\n");
 	return 0;
 }
 
