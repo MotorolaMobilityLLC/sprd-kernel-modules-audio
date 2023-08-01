@@ -166,15 +166,6 @@ static unsigned int sprd_read_reg_value(unsigned int reg)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
-int dsp_fm_mute_by_set_dg(void)
-	__attribute__ ((weak, alias("__dsp_fm_mute_by_set_dg")));
-
-static int __dsp_fm_mute_by_set_dg(void)
-{
-	pr_err("ERR: dsp_fm_mute_by_set_dg is not defined!\n");
-	return -1;
-}
-
 int vbc_close_fm_dggain(bool mute)
 	__attribute__ ((weak, alias("__vbc_close_fm_dggain")));
 static int __vbc_close_fm_dggain(bool mute)

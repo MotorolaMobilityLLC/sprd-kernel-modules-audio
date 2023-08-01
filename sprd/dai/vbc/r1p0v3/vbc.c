@@ -5284,6 +5284,7 @@ int vbc_close_fm_dggain(bool mute)
 
 	return 0;
 }
+EXPORT_SYMBOL(vbc_close_fm_dggain);
 
 static unsigned int vbc_codec_read(struct snd_soc_component *codec,
 				   unsigned int reg)
