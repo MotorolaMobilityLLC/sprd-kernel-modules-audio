@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
 #
-# snd-soc-sprd-card.ko
+# snd-soc-pa-fs1815.ko
 #
 # Makefile: for external make invocation
 #
@@ -18,14 +18,14 @@
 #   Documentation/kbuild/modules.txt
 #
 
-export KO_MODULE_NAME := snd-soc-sprd-card
+export KO_MODULE_NAME := snd-soc-pa-fs1815
 KO_MODULE_OUT := $(BSP_MODULES_OUT)/$(KO_MODULE_NAME)
 KO_MODULE_KBUILD := $(CURDIR)/Kbuild
-export KBUILD_EXTRA_SYMBOLS += $(BSP_MODULES_OUT)/snd-soc-pa-fs1815/Module.symvers
+
 .PHONY: modules modules_install clean
 
 modules:
-	@mkdir -p $(KO_MODULE_OUT) && ln -snf $(KO_MODULE_KBUILD) $(KO_MODULE_OUT)/Kbuild
+	mkdir -p $(KO_MODULE_OUT) && ln -snf $(KO_MODULE_KBUILD) $(KO_MODULE_OUT)/Kbuild
 	@ln -snf $(CURDIR) $(KO_MODULE_OUT)/source
 	$(MAKE) -C $(BSP_KERNEL_PATH) M=$(KO_MODULE_OUT) src=$(CURDIR) $@
 

@@ -21,6 +21,12 @@
 #include "sprd-asoc-card-utils.h"
 #include "sprd-asoc-common.h"
 
+extern void fsm_speaker_onn(void);
+extern void fsm_speaker_off(void);
+extern void fsm_init(void);
+extern void fsm_set_scene(int scene);
+extern int fsm_dev_count(void);
+
 struct sprd_asoc_ext_hook_map {
 	const char *name;
 	sprd_asoc_hook_func hook;
@@ -85,6 +91,41 @@ static ssize_t select_mode_store(struct kobject *kobj,
 	return len;
 }
 
+
+static ssize_t pa_info_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buff)
+{
+	return sprintf(buff, "%s\n", fsm_dev_count() <= 0 ? "unknown" : "fs1815");
+}
+
+static ssize_t fsm_init_store(struct kobject *kobj,
+				 struct kobj_attribute *attr,
+				 const char *buff, size_t len)
+{
+	pr_info("%s enter\n", __func__);
+	fsm_init();
+	return len;
+}
+
+static ssize_t fsm_scene_store(struct kobject *kobj,
+				 struct kobj_attribute *attr,
+				 const char *buff, size_t len)
+{
+	unsigned long scene;
+	int ret;
+
+	ret = kstrtoul(buff, 10, &scene);
+	if (ret) {
+		pr_err("%s kstrtoul failed!(%d)\n", __func__, ret);
+		return len;
+	}
+
+	pr_info("%s set_scene: %ul\n", scene);
+	fsm_set_scene((int)scene);
+
+	return len;
+}
+
 static int ext_debug_sysfs_init(void)
 {
 	int ret;
@@ -93,6 +134,21 @@ static int ext_debug_sysfs_init(void)
 		__ATTR(select_mode, 0644,
 		select_mode_show,
 		select_mode_store);
+
+	static struct kobj_attribute ext_info_attr =
+		__ATTR(pa_info, 0644,
+		pa_info_show,
+		NULL);
+
+	static struct kobj_attribute fsm_init_attr =
+		__ATTR(fsm_init, 0644,
+		NULL,
+		fsm_init_store);
+
+	static struct kobj_attribute fsm_scene_attr =
+		__ATTR(fsm_scene, 0644,
+		NULL,
+		fsm_scene_store);
 
 	if (ext_debug_kobj)
 		return 0;
@@ -108,7 +164,24 @@ static int ext_debug_sysfs_init(void)
 		pr_err("create sysfs failed. ret = %d\n", ret);
 		return ret;
 	}
+	ret = sysfs_create_file(ext_debug_kobj, &ext_info_attr.attr);
+	if (ret) {
+		pr_err("create sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
 
+	ret = sysfs_create_file(ext_debug_kobj, &fsm_init_attr.attr);
+	if (ret) {
+		pr_err("create fsm_init sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+
+	ret = sysfs_create_file(ext_debug_kobj, &fsm_scene_attr.attr);
+	if (ret) {
+		pr_err("create fsm_scene sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+	pr_info("FSM create sys ok !\n");
 	return ret;
 }
 
@@ -195,8 +268,22 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
+static int hook_spk_i2c(int id, int on)
+{
+	pr_info("%s id: %d, on: %d\n", __func__, id, on);
+	if (on) {
+		//enable PA
+		fsm_speaker_onn();
+	} else {
+		//disable PA
+		fsm_speaker_off();
+	}
+	return HOOK_OK;
+ }
+
 static struct sprd_asoc_ext_hook_map ext_hook_arr[] = {
 	{"general_speaker", hook_general_spk, EN_LEVEL},
+	{"I2C_speaker", hook_spk_i2c, EN_LEVEL},
 };
 
 static int sprd_asoc_card_parse_hook(struct device *dev,
@@ -217,7 +304,7 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 	if (!ret) {
 		sp_asoc_pr_info("%s hook aw87xx iic pa!\n", __func__);
 		extral_iic_pa_en = extral_iic_pa;
-		ext_hook->ext_ctrl[BOARD_FUNC_SPK] = ext_hook_arr[BOARD_FUNC_SPK].hook;
+		ext_hook->ext_ctrl[BOARD_FUNC_SPK] = ext_hook_arr[BOARD_FUNC_SPK1].hook;
 		return 0;
 	}
 
@@ -276,7 +363,10 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 		/* Get the private data */
 		priv_data = buf[CELL_PRIV + num];
 		hook_spk_priv.priv_data[ext_ctrl_type] = priv_data;
-
+		if (1 == hook_sel) {
+			pr_warn("%s pa use i2c\n", __func__);
+			continue;
+		}
 		/* Process the shared gpio */
 		share_gpio = buf[CELL_SHARE_GPIO + num];
 		if (share_gpio > 0) {

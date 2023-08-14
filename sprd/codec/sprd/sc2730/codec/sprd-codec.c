@@ -49,6 +49,17 @@
 #define FUN_REG(f) ((unsigned short)(-((f) + 1)))
 #include "aud_topa_rf.h"
 
+// Add For FSM FS1815
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+#define snd_soc_codec              snd_soc_component
+#define snd_soc_add_codec_controls snd_soc_add_component_controls
+#define snd_soc_codec_get_drvdata  snd_soc_component_get_drvdata
+#endif
+
+extern void fsm_add_codec_controls(struct snd_soc_codec *codec);
+
+
 #define SPRD_CODEC_AP_BASE_HI (SPRD_CODEC_AP_BASE & 0xFFFF0000)
 #define SPRD_CODEC_DP_BASE_HI (SPRD_CODEC_DP_BASE & 0xFFFF0000)
 
@@ -3779,7 +3790,7 @@ static int sprd_codec_soc_probe(struct snd_soc_component *codec)
 		pr_info("The headset is not ready now\n");
 		return ret;
 	}
-
+	fsm_add_codec_controls(codec);
 	return 0;
 }
 
