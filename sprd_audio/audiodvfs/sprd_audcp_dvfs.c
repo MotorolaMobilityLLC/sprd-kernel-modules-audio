@@ -1779,6 +1779,28 @@ static int audcp_dvfs_parse_dts(struct device *dev,
 	return err;
 }
 
+static bool is_lowv_chip(void)
+{
+	struct device_node *hwf;
+	const char *lowv;
+
+	hwf = of_find_node_by_path("/hwfeature/auto");
+	if (!hwf) {
+		pr_info("Can't find node /hwfeature/auto/lowv\n");
+		return false;
+	}
+
+	lowv = of_get_property(hwf, "lowv", NULL);
+	pr_info("get lowv peoperty: %s\n", lowv);
+
+	if (lowv == NULL)
+		return false;
+	if (!strcmp(lowv, "false"))
+		return false;
+
+	return true;
+}
+
 static int audcp_dvfs_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1806,7 +1828,29 @@ static int audcp_dvfs_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	dev_info(&pdev->dev, "<-- agdsp_pd is enabled for audcp_dvfs device now\n");
 
-	return err;
+	if (is_lowv_chip()) {
+		pr_info("%s, N6Pro lowv chip\n", __func__);
+
+		err = enable_audcp_ipc(dev);
+		if (err < 0) {
+			dev_err(dev, "enable audcp ipc failed\n");
+			return err;
+		}
+
+		err = pm_runtime_get_sync(dev);
+		if (err < 0) {
+			dev_err(dev, "agdsp_access_enable failed!\n");
+			return err;
+		}
+
+		aud_send_cmd_no_param(data->channel, AUDDVFS_LOWV_FAIL_CHIP,
+			0, 0, 0, 0, -1);
+
+		pm_runtime_mark_last_busy(dev);
+		pm_runtime_put_autosuspend(dev);
+	}
+
+	return 0;
 }
 
 static int audcp_dvfs_remove(struct platform_device *pdev)
