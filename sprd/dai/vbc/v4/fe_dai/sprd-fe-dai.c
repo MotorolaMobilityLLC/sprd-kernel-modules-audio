@@ -951,6 +951,8 @@ static int fe_dai_probe(struct snd_soc_dai *fe_dai)
 
 static const struct snd_soc_component_driver sprd_fe_dai_component = {
 	.name = "sprd-dai-fe",
+	.use_dai_pcm_id = true,
+	.be_pcm_base = 0,
 };
 
 static struct snd_soc_dai_driver sprd_fe_dais[FE_DAI_ID_MAX] = {

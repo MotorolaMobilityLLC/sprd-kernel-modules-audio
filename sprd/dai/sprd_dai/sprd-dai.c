@@ -90,6 +90,8 @@
 #define RX_P_TX_P_CLK_N     6
 #define RX_P_TX_P_CLK_R     7
 
+#define SPRD_DAI_BE_PCM_BASE 200
+
 struct sprd_agcp_i2s_config {
 	u32 hw_port;
 	u32 bus_type;
@@ -784,6 +786,8 @@ static struct snd_soc_dai_driver sprd_agcp_i2s_dai[] = {
 
 static const struct snd_soc_component_driver sprd_agcp_i2s_component = {
 	.name = "sprd-agcp-i2s",
+	.use_dai_pcm_id = true,
+	.be_pcm_base = SPRD_DAI_BE_PCM_BASE,
 };
 
 #if 0

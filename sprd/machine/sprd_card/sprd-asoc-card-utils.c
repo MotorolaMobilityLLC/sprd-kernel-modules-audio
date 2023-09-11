@@ -130,7 +130,7 @@ static int
 asoc_sprd_card_sub_parse_of(struct device_node *np,
 			    struct asoc_simple_dai *dai,
 			    struct snd_soc_dai_link_component *component,
-			    int *args_count)
+			    int *args_count, int *dai_id)
 {
 	struct of_phandle_args args;
 	struct clk *clk;
@@ -155,6 +155,19 @@ asoc_sprd_card_sub_parse_of(struct device_node *np,
 
 	if (args_count)
 		*args_count = args.args_count;
+
+	/* Get dai->id */
+	if (dai_id) {
+		if (args.args_count)
+			*dai_id = args.args[0];
+		else {
+			ret = -EINVAL;
+			pr_err("ERR: %s parse dai id of handle '%s' failed!(%d)\n",
+				__func__, np->name, ret);
+			return ret;
+		}
+	}
+
 	/* Get dai->name */
 	ret = snd_soc_of_get_dai_name(np, &component->dai_name);
 	if (ret < 0) {
@@ -485,7 +498,7 @@ static int asoc_sprd_card_dai_link_of(struct device_node *node,
 	struct device_node *codec = NULL;
 	char prop[128];
 	char *prefix = "";
-	int ret, cpu_args;
+	int ret, cpu_args, cpu_dai_id = -1;
 	u32 val;
 
 	/* For single DAI link & old style of DT node */
@@ -525,13 +538,14 @@ static int asoc_sprd_card_dai_link_of(struct device_node *node,
 	dai_link->platforms = component + 2;
 
 	ret = asoc_sprd_card_sub_parse_of(cpu, &dai_props->cpu_dai,
-					  dai_link->cpus, &cpu_args);
+					  dai_link->cpus, &cpu_args, &cpu_dai_id);
 	if (ret < 0)
 		goto dai_link_of_err1;
 	dai_link->num_cpus = 1;
+	dai_link->id = cpu_dai_id;
 
 	ret = asoc_sprd_card_sub_parse_of(codec, &dai_props->codec_dai,
-					  dai_link->codecs, NULL);
+					  dai_link->codecs, NULL, NULL);
 	if (ret < 0) {
 		if (-ENOENT == ret) {
 			pr_debug("%s: parse for codec failed. Go to use a dummy codec.\n",
@@ -576,6 +590,7 @@ static int asoc_sprd_card_dai_link_of(struct device_node *node,
 		dai_link->cpus->dai_name, dai_props->cpu_dai.sysclk);
 	dev_dbg(dev, "\tcodec : %s / %d\n",
 		dai_link->codecs->dai_name, dai_props->codec_dai.sysclk);
+	dev_dbg(dev, "\tdai_id : %d\n", dai_link->id);
 
 	/*
 	 * In soc_bind_dai_link() will check cpu name after
