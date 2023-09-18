@@ -227,6 +227,8 @@ enum dvfs_cmd_type {
 	AUDDVFS_GET_RECORD,
 	AUDDVFS_GET_REG,
 	AUDDVFS_SET_REG,
+	/* lowv fail chip for N6P */
+	AUDDVFS_LOWV_FAIL_CHIP,
 	AUDDVFS_CMD_MAX
 };
 

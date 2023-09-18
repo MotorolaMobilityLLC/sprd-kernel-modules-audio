@@ -6738,6 +6738,7 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	para->loopback_para.loopback_type = vbc_codec->loopback.loopback_type;
 	para->loopback_para.amr_rate = vbc_codec->loopback.amr_rate;
 	para->loopback_para.voice_fmt = vbc_codec->loopback.voice_fmt;
+	para->loopback_para.loop_mode = vbc_codec->loopback.loop_mode;
 	/* sbc para */
 	para->sbcenc_para = vbc_codec->sbcenc_para;
 	/* ivsense smartpa */
