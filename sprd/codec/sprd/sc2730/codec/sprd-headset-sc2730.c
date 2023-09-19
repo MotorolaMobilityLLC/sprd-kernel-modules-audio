@@ -2173,7 +2173,7 @@ static void sprd_headset_type_report(struct sprd_headset *hdst)
 		if (sprd_headset_part_is_inserted(HDST_INSERT_MDET)
 			&& !pdata->support_typec_hdst) {
 			sprd_button_irq_threshold(1);
-			sprd_set_eic_trig_level(HDST_BDET_EIC, true);
+			sprd_set_eic_trig_level(HDST_BDET_EIC, false);
 			sprd_headset_eic_enable(HDST_BDET_EIC, true);
 			sprd_headset_eic_trig(HDST_BDET_EIC);
 		} else if (pdata->support_typec_hdst) {
