@@ -2421,7 +2421,19 @@ static int vbc_fm_mute_put(struct snd_kcontrol *kcontrol,
 				   vbc_codec->fm_mute_step.step);
 	vbc_codec->fm_mute.id = id;
 	vbc_codec->fm_mute.mute = value;
+#if (defined(CONFIG_UNISOC_AUDIO_VBC_FM_UNMUTE_SMOOTH_NOT_SUPPORT))
+	if(!value) {
+		sp_asoc_pr_info("%s, dsp_fm_mute_by_set_dg\n", __func__);
+		dsp_fm_mute_by_set_dg();
+	} else {
+		sp_asoc_pr_info("%s, dsp_fm_unmute_by_set_dg,dg_left %d, dg_right %d\n", __func__,
+					vbc_codec->dg[VBC_DG_FM].dg_left,
+					vbc_codec->dg[VBC_DG_FM].dg_right);
+		dsp_fm_unmute_by_set_dg(vbc_codec->dg[VBC_DG_FM].dg_left,vbc_codec->dg[VBC_DG_FM].dg_right);
+	}
+#else
 	fm_mute_set(id, value, vbc_codec->fm_mute_step.step);
+#endif
 
 	return true;
 }

@@ -1720,4 +1720,7 @@ int dsp_audio_aec_set(u32 value);
 int dsp_audio_ns_set(u32 value);
 int dsp_voice_volume_ramp_set(u32 value);
 
+int dsp_fm_mute_by_set_dg(void);
+int dsp_fm_unmute_by_set_dg(int dg_l, int dg_r);
+
 #endif /* __VBC_V4_PHY_DRV_H */

@@ -1942,6 +1942,23 @@ int dsp_fm_mute_by_set_dg(void)
 	return 0;
 }
 
+int dsp_fm_unmute_by_set_dg(int dg_l, int dg_r)
+{
+	int dg_id = VBC_DG_FM;
+	int ret;
+
+	/* send audio cmd no receive*/
+	ret = aud_send_use_noreplychan(
+			SND_VBC_DSP_IO_KCTL_SET,
+			SND_KCTL_TYPE_DG, dg_id, dg_l, dg_r);
+	if (ret < 0) {
+		pr_err("%s, Failed to set, ret: %d\n", __func__, ret);
+		return -1;
+	}
+
+	return 0;
+}
+
 /***********************************************************
  * audio digital control
  ***********************************************************/
