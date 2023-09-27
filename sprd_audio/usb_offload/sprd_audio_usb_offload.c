@@ -314,17 +314,25 @@ static int sprd_usb_aud_ofld_en(struct snd_usb_audio *chip, int stream)
 }
 
 static int sprd_ofld_synctype_ignore(struct snd_usb_audio *chip,
-	int stream, int attr)
+	int stream, int attr, unsigned int speed)
 {
 	if (!sprd_usb_aud_ofld_en(chip, stream)) {
 		pr_info("not enable usb audio offload, can't ignore\n");
 		return 0;
 	}
+
+	if (speed >= USB_SPEED_HIGH) {
+		pr_info("offload ignore synctype stream %s speed %d\n",
+			stream ? "capture" : "playback", speed);
+		return 1;
+	}
+
 	if (attr != USB_ENDPOINT_SYNC_SYNC) {
 		pr_info("offload ignore synctype stream %s sync_type %d\n",
 			stream ? "capture" : "playback", attr);
 		return 1;
 	}
+
 	pr_debug("stream %s sync_type is %d\n",
 		stream ? "capture" : "playback", attr);
 
@@ -338,7 +346,7 @@ static void usb_offload_synctype_ignore(void *data, void *arg, int attr, bool *n
 	int ignore;
 
 	chip = subs->stream ? subs->stream->chip : NULL;
-	ignore = sprd_ofld_synctype_ignore(chip, subs->direction, attr);
+	ignore = sprd_ofld_synctype_ignore(chip, subs->direction, attr, subs->speed);
 	if (ignore) {
 		pr_info("ofld_en %d, stream %d, sync_type %#x, ignore this audiofmt\n",
 			sprd_usb_aud_ofld_en(chip, subs->direction), subs->direction, attr);
