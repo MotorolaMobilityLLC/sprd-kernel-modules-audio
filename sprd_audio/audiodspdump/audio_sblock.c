@@ -1042,6 +1042,48 @@ int audio_sblock_release(uint8_t dst, uint8_t channel, struct sblock *blk)
 }
 EXPORT_SYMBOL(audio_sblock_release);
 
+void audio_sblock_info_print(void)
+{
+	int dst, channel, count;
+	struct sblock_mgr *sblock;
+	struct sblock_ring *ring = NULL;
+	volatile struct sblock_ring_header *ringhd = NULL;
+	volatile struct sblock_ring_header *poolhd = NULL;
+
+	pr_info("%s, start!\n", __func__);
+	for (dst = 0; dst < AUD_IPC_NR; dst++) {
+		for (channel = 0; channel < AMSG_CH_NR; channel++) {
+			sblock = (struct sblock_mgr *)sblocks[dst][channel];
+			if (!sblock || sblock->state != SBLOCK_STATE_READY)
+				continue;
+			pr_info("dst=%d, channel=%d, txblknum=%d, txblksz=%d, rxblknum=%d, rxblksz=%d\n",
+				dst, channel, sblock->txblknum, sblock->txblksz,
+				sblock->rxblknum, sblock->rxblksz);
+
+			ring = sblock->ring;
+			ringhd = (volatile struct sblock_ring_header *)(&ring->header->ring);
+			poolhd = (volatile struct sblock_ring_header *)(&ring->header->pool);
+			pr_info("ringhd, rxblk_addr=0x%08x, rxblk_count=%d, rxblk_size=%d, rxblk_blks=0x%08x, rxblk_rdptr=%d, rxblk_wrptr=%d\n",
+				ringhd->rxblk_addr, ringhd->rxblk_count, ringhd->rxblk_size,
+				ringhd->rxblk_blks, ringhd->rxblk_rdptr, ringhd->rxblk_wrptr);
+			pr_info("poolhd, rxblk_addr=0x%08x, rxblk_count=%d, rxblk_size=%d, rxblk_blks=0x%08x, rxblk_rdptr=%d, rxblk_wrptr=%d\n",
+				poolhd->rxblk_addr, poolhd->rxblk_count, poolhd->rxblk_size,
+				poolhd->rxblk_blks, poolhd->rxblk_rdptr, poolhd->rxblk_wrptr);
+
+			for (count = 0; count < ringhd->rxblk_count; count++)
+				pr_info("ring, index=%d, rxblk_addr=0x%08x, rxblk_len=%d\n",
+					count, ring->r_rxblks[count].addr,
+					ring->r_rxblks[count].length);
+			for (count = 0; count < poolhd->rxblk_count; count++)
+				pr_info("pool, index=%d, rxblk_addr=0x%08x, rxblk_len=%d\n",
+					count, ring->p_rxblks[count].addr,
+					ring->p_rxblks[count].length);
+		}
+	}
+	pr_info("%s, end!\n", __func__);
+}
+EXPORT_SYMBOL(audio_sblock_info_print);
+
 MODULE_AUTHOR("Chen Gaopeng");
 MODULE_DESCRIPTION("SIPC/SBLOCK driver");
 MODULE_LICENSE("GPL");

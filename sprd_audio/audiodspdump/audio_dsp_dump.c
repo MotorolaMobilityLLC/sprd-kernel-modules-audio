@@ -364,6 +364,9 @@ static int audio_dsp_audio_info_dump(void *private, u32 is_timeout)
 			+ DSP_MEM_OFFSET, is_timeout);
 	pr_info("%s: dsp mem dump bytes : %d", __func__, bytes);
 
+	/* sblock info dump */
+	audio_sblock_info_print();
+
 	return bytes;
 }
 

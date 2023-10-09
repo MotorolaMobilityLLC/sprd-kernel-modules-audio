@@ -33,4 +33,5 @@ int audio_sblock_release(uint8_t dst, uint8_t channel, struct sblock *blk);
 int audio_sblock_init(uint8_t dst, uint8_t channel,
 		u32 txblocknum, u32 txblocksize,
 		u32 rxblocknum, u32 rxblocksize, int mem_type);
+void audio_sblock_info_print(void);
 #endif
