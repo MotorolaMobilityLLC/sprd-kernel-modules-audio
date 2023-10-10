@@ -13863,6 +13863,8 @@ struct snd_soc_component_driver sprd_vbc_codec = {
 	.num_controls = ARRAY_SIZE(vbc_codec_snd_controls),
 	.suspend = normal_suspend,
 	.resume = normal_resume,
+	.use_dai_pcm_id = true,
+	.be_pcm_base = FE_DAI_ID_MAX,
 };
 EXPORT_SYMBOL(sprd_vbc_codec);
 
