@@ -1956,6 +1956,7 @@ sprd_headset_valid_insert_all(struct sprd_headset *hdst,
 {
 	int val, data_last, data_current;
 
+        sprd_msleep(100);
 	val = sprd_get_eic_mis_status(HDST_INSERT_ALL_EIC);
 	if (val == 0) {
 		pr_err("fatal error, HDST_INSERT_ALL_EIC invalid, INT8(220.MIS) %x\n",
