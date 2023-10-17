@@ -6751,8 +6751,6 @@ static int vbc_startup(struct snd_pcm_substream *substream,
 		       struct snd_soc_dai *dai)
 {
 	int vbc_idx;
-	int i;
-	struct snd_soc_card *card = dai->component->card;
 	struct vbc_codec_priv *vbc_codec;
 
 	vbc_idx = vbc_str_2_index(substream->stream, dai->id);
@@ -6764,12 +6762,6 @@ static int vbc_startup(struct snd_pcm_substream *substream,
 		pr_err("%s %d vbc_codec failed\n",
 		       __func__, __LINE__);
 		return -EINVAL;
-	}
-
-	for (i = 0; i < card->num_links; i++) {
-		card->dai_link[i].ignore_suspend = 0;
-		pr_info("%s card->dai_link[%d].ignore_suspend = %d  %d\n", __func__, i,
-                               card->dai_link[i].ignore_suspend, __LINE__);
 	}
 
 	vbc_power(1);
