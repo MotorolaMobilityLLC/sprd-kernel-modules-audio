@@ -306,7 +306,7 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 		gpio_flag |= ext_hook_arr[hook_sel].en_level ?
 			GPIOF_INIT_HIGH : GPIOF_INIT_LOW;
 		ret = gpio_request_one(hook_spk_priv.gpio[ext_ctrl_type],
-				       gpio_flag, NULL);
+				       gpio_flag,  "audio:pa_ctrl");
 		dev_info(dev, "Gpio request[%d] ret:%d! hook_p = %p, ext_ctrl_p = %p \n",
 			ext_ctrl_type, ret, ext_hook, ext_hook->ext_ctrl[ext_ctrl_type]);
 		if (ret == 0) {
