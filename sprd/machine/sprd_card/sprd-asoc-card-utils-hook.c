@@ -175,6 +175,8 @@ static int hook_general_spk(int id, int on)
 	/* Off */
 	if (!on) {
 		gpio_set_value(gpio, !EN_LEVEL);
+		/* aviod pulses less than 1ms */
+		msleep(2);
 		return HOOK_OK;
 	}
 
@@ -337,6 +339,7 @@ int sprd_asoc_card_ext_hook_free_gpio(struct device *dev)
 	unsigned int ext_ctrl_type;
 	int ret = 0;
 	u32 *buf;
+	bool is_freed = false;
 
 	elem_cnt = of_property_count_u32_elems(np, prop_pa_info);
 	if (elem_cnt <= 0) {
@@ -385,8 +388,14 @@ int sprd_asoc_card_ext_hook_free_gpio(struct device *dev)
 			gpio_free(hook_spk_priv.gpio[ext_ctrl_type]);
 			hook_spk_priv.gpio_requested[ext_ctrl_type] = false;
 			pr_info("%s, gpio_freed\n", __func__);
+			is_freed = true;
 		}
 	}
+
+	if (is_freed) {
+		pr_info("%s, delay 10ms after gpio freed\n", __func__);
+		msleep(10);
+        }
 
 	return 0;
 }

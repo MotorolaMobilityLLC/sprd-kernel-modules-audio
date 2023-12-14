@@ -495,7 +495,10 @@ static void sprd_dma_config(struct snd_pcm_substream *substream,
 		pcm_dsp_cap_mcdt.name = "VBC DSP_CAP C";
 		pcm_dsp_cap_mcdt.irq_type = SPRD_DMA_BLK_INT;
 		pcm_dsp_cap_mcdt.desc.datawidth = DMA_SLAVE_BUSWIDTH_4_BYTES;
-		pcm_dsp_cap_mcdt.desc.fragmens_len = MCDT_DSPCAP_FRAGMENT;
+		if (params_channels(params) == 1)
+			pcm_dsp_cap_mcdt.desc.fragmens_len = MCDT_DSPCAP_FRAGMENT_SINGLE_CHAN;
+		else
+			pcm_dsp_cap_mcdt.desc.fragmens_len = MCDT_DSPCAP_FRAGMENT;
 		pcm_dsp_cap_mcdt.use_mcdt = 1;
 		pcm_dsp_cap_mcdt.dev_paddr[0] =
 			mcdt_adc_dma_phy_addr(MCDT_CHAN_DSP_CAP);
