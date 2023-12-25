@@ -21,6 +21,15 @@
 #include "sprd-asoc-card-utils.h"
 #include "sprd-asoc-common.h"
 
+// Add For FSM FS1815N
+#ifdef CONFIG_SND_SOC_FS1815
+extern void fsm_speaker_onn(void);
+extern void fsm_speaker_off(void);
+extern void fsm_init(void);
+extern void fsm_set_scene(int scene);
+extern int fsm_dev_count(void);
+#endif
+
 struct sprd_asoc_ext_hook_map {
 	const char *name;
 	sprd_asoc_hook_func hook;
@@ -48,6 +57,8 @@ struct sprd_asoc_hook_spk_priv {
 	int gpio[BOARD_FUNC_MAX];
 	int priv_data[BOARD_FUNC_MAX];
 	bool gpio_requested[BOARD_FUNC_MAX];
+	int state[BOARD_FUNC_MAX];
+	int rcv_shared_multi_spk;
 	spinlock_t lock;
 };
 
@@ -85,6 +96,42 @@ static ssize_t select_mode_store(struct kobject *kobj,
 	return len;
 }
 
+#ifdef CONFIG_SND_SOC_FS1815
+static ssize_t pa_info_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buff)
+{
+	return sprintf(buff, "%s\n", fsm_dev_count() <= 0 ? "unknown" : "fs1815");
+}
+
+static ssize_t fsm_init_store(struct kobject *kobj,
+				 struct kobj_attribute *attr,
+				 const char *buff, size_t len)
+{
+	pr_info("%s enter\n", __func__);
+	fsm_init();
+	return len;
+}
+
+static ssize_t fsm_scene_store(struct kobject *kobj,
+				 struct kobj_attribute *attr,
+				 const char *buff, size_t len)
+{
+	unsigned long scene;
+	int ret;
+
+	ret = kstrtoul(buff, 10, &scene);
+	if (ret) {
+		pr_err("%s kstrtoul failed!(%d)\n", __func__, ret);
+		return len;
+	}
+
+	pr_info("%s set_scene: %ul\n", scene);
+	fsm_set_scene((int)scene);
+
+	return len;
+}
+#endif
+
 static int ext_debug_sysfs_init(void)
 {
 	int ret;
@@ -93,6 +140,23 @@ static int ext_debug_sysfs_init(void)
 		__ATTR(select_mode, 0644,
 		select_mode_show,
 		select_mode_store);
+
+#ifdef CONFIG_SND_SOC_FS1815
+	static struct kobj_attribute ext_info_attr =
+		__ATTR(pa_info, 0644,
+		pa_info_show,
+		NULL);
+
+	static struct kobj_attribute fsm_init_attr =
+		__ATTR(fsm_init, 0644,
+		NULL,
+		fsm_init_store);
+
+	static struct kobj_attribute fsm_scene_attr =
+		__ATTR(fsm_scene, 0644,
+		NULL,
+		fsm_scene_store);
+#endif
 
 	if (ext_debug_kobj)
 		return 0;
@@ -108,6 +172,26 @@ static int ext_debug_sysfs_init(void)
 		pr_err("create sysfs failed. ret = %d\n", ret);
 		return ret;
 	}
+
+#ifdef CONFIG_SND_SOC_FS1815
+	ret = sysfs_create_file(ext_debug_kobj, &ext_info_attr.attr);
+	if (ret) {
+		pr_err("create sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+
+	ret = sysfs_create_file(ext_debug_kobj, &fsm_init_attr.attr);
+	if (ret) {
+		pr_err("create fsm_init sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+
+	ret = sysfs_create_file(ext_debug_kobj, &fsm_scene_attr.attr);
+	if (ret) {
+		pr_err("create fsm_scene sysfs failed. ret = %d\n", ret);
+		return ret;
+	}
+#endif
 
 	return ret;
 }
@@ -197,8 +281,104 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
+#ifdef CONFIG_SND_SOC_FS1815
+static int hook_spk_i2c_fs1815(int id, int on)
+{
+	int mode;
+
+	pr_info("%s id: %d, on: %d\n", __func__, id, on);
+
+	mode = hook_spk_priv.priv_data[id];
+	if (mode > GENERAL_SPK_MODE)
+		mode = 0;
+	pr_info("%s id: %d, mode: %d, on: %d\n", __func__, id, mode, on);
+
+	if (on) {
+		if (select_mode) {
+			mode = select_mode;
+			pr_info("%s mode: %d, select_mode: %d\n", __func__, mode, select_mode);
+		}
+		hook_spk_priv.state[id] = mode;
+		//enable PA
+		if (id == 2)
+			fsm_set_scene(15);
+		fsm_speaker_onn();
+	} else {
+		//disable PA
+		fsm_speaker_off();
+		hook_spk_priv.state[id] = 0;
+		fsm_set_scene(0);
+		msleep(1); // avoid handset/handsfree switched to fast
+	}
+	return HOOK_OK;
+}
+
+static int hook_spk_i2c(int id, int on)
+{
+	// BOARD_FUNC_EAR only shared with BOARD_FUNC_SPK
+	// if BOARD_FUNC_EAR is shared with both BOARD_FUNC_SPK1 and BOARD_FUNC_SPK,
+	// SPK1 should be processed by SPK or EAR("speaker1 function" will be invalid)
+	// SPK1 mode is default(dts) when spk on; same with ear mode when ear real on
+	// dts: sprd,rcv_shared_multi_spk;
+	if (hook_spk_priv.rcv_shared_multi_spk && BOARD_FUNC_SPK1 == id) {
+		return HOOK_OK;
+	}
+	pr_info("%s id: %d, on: %d\n", __func__, id, on);
+	switch (id) {
+		case BOARD_FUNC_SPK:
+			// when spk on, if ear is real on: ear switch to virtual on
+			if (on && 0 < hook_spk_priv.state[BOARD_FUNC_EAR]) {
+				hook_spk_i2c_fs1815(BOARD_FUNC_EAR, 0);
+				if (hook_spk_priv.rcv_shared_multi_spk) {
+					select_mode = 0;
+					hook_spk_i2c_fs1815(BOARD_FUNC_SPK1, 0);
+				}
+				hook_spk_priv.state[BOARD_FUNC_EAR] = -1; // ear virtual on
+			}
+			// spk on/off
+			hook_spk_i2c_fs1815(id, on);
+			if (hook_spk_priv.rcv_shared_multi_spk) {
+				select_mode = 0;
+				hook_spk_i2c_fs1815(BOARD_FUNC_SPK1, on);
+			}
+			// when spk off, if ear is virtual on: ear switch to real on
+			if (!on && -1 == hook_spk_priv.state[BOARD_FUNC_EAR]) {
+				hook_spk_i2c_fs1815(BOARD_FUNC_EAR, 1); // ear real on
+				if (hook_spk_priv.rcv_shared_multi_spk) {
+					select_mode = hook_spk_priv.priv_data[BOARD_FUNC_EAR];
+					hook_spk_i2c_fs1815(BOARD_FUNC_SPK1, 1);
+					select_mode = 0;
+				}
+			}
+			break;
+		case BOARD_FUNC_EAR:
+			// when ear on/off, if spk is on: ear virtual on/off; else ear real on/off
+			if (0 < hook_spk_priv.state[BOARD_FUNC_SPK]) {
+				hook_spk_priv.state[BOARD_FUNC_EAR] = ((on > 0) ? -1:0); // ear virtual on/off
+			} else {
+				hook_spk_i2c_fs1815(BOARD_FUNC_EAR, on); // ear real on/off
+				if (hook_spk_priv.rcv_shared_multi_spk) {
+					select_mode = ((on > 0) ? hook_spk_priv.priv_data[BOARD_FUNC_EAR]:0);
+					hook_spk_i2c_fs1815(BOARD_FUNC_SPK1, on);
+					select_mode = 0;
+				}
+			}
+			break;
+		default:
+			hook_spk_i2c_fs1815(id, on);
+			break;
+	}
+	pr_info("%s id=%d  on=%d  hook state {%d, %d, %d}", __func__, id, on, 
+			hook_spk_priv.state[0], hook_spk_priv.state[1], hook_spk_priv.state[2]);
+	return HOOK_OK;
+}
+#endif
+
 static struct sprd_asoc_ext_hook_map ext_hook_arr[] = {
 	{"general_speaker", hook_general_spk, EN_LEVEL},
+#ifdef CONFIG_SND_SOC_FS1815
+	{"i2c_speaker", hook_spk_i2c, EN_LEVEL},
+#endif
 };
 
 static int sprd_asoc_card_parse_hook(struct device *dev,
@@ -255,6 +435,12 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 		//return ret;
 	}
 
+	if (of_property_read_bool(np, "sprd,rcv_shared_multi_spk"))
+		hook_spk_priv.rcv_shared_multi_spk = 1;
+	else
+		hook_spk_priv.rcv_shared_multi_spk = 0;
+	dev_info(dev, "[%s] rcv shared with multi spk: %d\n", __func__, hook_spk_priv.rcv_shared_multi_spk);
+
 	for (i = 0; i < spk_cnt; i++) {
 		int num = i * CELL_NUMBER;
 
@@ -278,6 +464,13 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 		/* Get the private data */
 		priv_data = buf[CELL_PRIV + num];
 		hook_spk_priv.priv_data[ext_ctrl_type] = priv_data;
+
+#ifdef CONFIG_SND_SOC_FS1815
+		if (1 == hook_sel) {
+			dev_warn(dev, "%s pa use i2c\n", __func__);
+			continue;
+		}
+#endif
 
 		/* Process the shared gpio */
 		share_gpio = buf[CELL_SHARE_GPIO + num];

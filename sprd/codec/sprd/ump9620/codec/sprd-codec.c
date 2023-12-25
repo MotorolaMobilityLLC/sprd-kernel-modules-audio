@@ -62,6 +62,17 @@
 #define RCV_DVLD_DONE_TIMEOUT	(500 * 8)
 #define RCV_DVLD_POLL_DELAY_US	500
 
+#ifdef CONFIG_SND_SOC_FS1815
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0))
+#define snd_soc_codec              snd_soc_component
+#define snd_soc_add_codec_controls snd_soc_add_component_controls
+#define snd_soc_codec_get_drvdata  snd_soc_component_get_drvdata
+#endif
+
+extern void fsm_add_codec_controls(struct snd_soc_codec *codec);
+#endif
+
 enum PA_SHORT_T {
 	PA_SHORT_NONE, /* PA output normal */
 	PA_SHORT_VBAT, /* PA output P/N short VBAT */
@@ -5414,6 +5425,10 @@ static int sprd_codec_soc_probe(struct snd_soc_component *codec)
 	/* fix badly THD+N quality in HP path at the first time */
 	snd_soc_component_update_bits(codec, SOC_REG(ANA_DAC1), DAHP_BUF_ITRIM,
 		DAHP_BUF_ITRIM);
+
+#ifdef CONFIG_SND_SOC_FS1815
+	fsm_add_codec_controls(codec);
+#endif
 
 	return 0;
 }
