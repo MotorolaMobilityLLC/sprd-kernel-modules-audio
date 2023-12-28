@@ -398,6 +398,11 @@ static void sprd_hmicbias_mode_set(struct sprd_headset *hdst,
 		regulator_set_mode(power_micbias->hdst_regu, mode);
 }
 
+//#define HEADSET_NOTIFIER
+#ifdef HEADSET_NOTIFIER
+#define PLUG_IN 1
+#define PLUG_OUT 0
+#endif
 static BLOCKING_NOTIFIER_HEAD(hp_chain_list);
 int headset_register_notifier(struct notifier_block *nb)
 {
@@ -416,7 +421,9 @@ int headset_register_notifier(struct notifier_block *nb)
 
 	return blocking_notifier_chain_register(&hp_chain_list, nb);
 }
-
+#ifdef HEADSET_NOTIFIER
+EXPORT_SYMBOL(headset_register_notifier);
+#endif
 int headset_unregister_notifier(struct notifier_block *nb)
 {
 	if (nb == NULL) {
@@ -426,7 +433,9 @@ int headset_unregister_notifier(struct notifier_block *nb)
 
 	return blocking_notifier_chain_unregister(&hp_chain_list, nb);
 }
-
+#ifdef HEADSET_NOTIFIER
+EXPORT_SYMBOL(headset_unregister_notifier);
+#endif
 int headset_get_plug_state(void)
 {
 	struct sprd_headset *hdst = sprd_hdst;
@@ -2213,9 +2222,15 @@ static void headset_ldetl_work_func(struct work_struct *work)
 
 	if (hdst->ldetl_trig_val_last && insert_status) {
 		hdst->ldetl_plug_in = 1;
+#ifdef HEADSET_NOTIFIER
+		blocking_notifier_call_chain(&hp_chain_list, PLUG_IN, NULL);
+#endif
 		pr_info("%s ldetl trig level is high, plugin?\n", __func__);
 	} else if (hdst->ldetl_trig_val_last == 0 && insert_status == 0) {
 		hdst->ldetl_plug_in = 0;
+#ifdef HEADSET_NOTIFIER
+                blocking_notifier_call_chain(&hp_chain_list, PLUG_OUT, NULL);
+#endif
 		pr_info("%s ldetl trig level is low, plugout?\n", __func__);
 	} else {
 		sprd_headset_reset(hdst);
