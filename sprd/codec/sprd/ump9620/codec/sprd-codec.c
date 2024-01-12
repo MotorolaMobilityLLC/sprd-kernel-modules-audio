@@ -3180,6 +3180,19 @@ static int dns_event(struct snd_soc_dapm_widget *w,
 	return ret;
 }
 
+static void sprd_codec_micbias_init(struct sprd_codec_priv *sprd_codec)
+{
+	struct snd_soc_component *codec = sprd_codec ? sprd_codec->codec : NULL;
+
+	if (codec == NULL) {
+		pr_err("%s, codec is NULL!", __func__);
+		return;
+	}
+
+	snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU5), MIC1_BIAS_V(0xff), MIC1_BIAS_V(0xb));
+	snd_soc_component_update_bits(codec, SOC_REG(ANA_PMU5), MIC2_BIAS_V(0xff), MIC2_BIAS_V(0xb));
+}
+
 #define REGU_CNT 2
 static void cp_short_check(struct sprd_codec_priv *sprd_codec)
 {
@@ -5429,6 +5442,7 @@ static int sprd_codec_soc_probe(struct snd_soc_component *codec)
 #ifdef CONFIG_SND_SOC_FS1815
 	fsm_add_codec_controls(codec);
 #endif
+	sprd_codec_micbias_init(sprd_codec);
 
 	return 0;
 }
