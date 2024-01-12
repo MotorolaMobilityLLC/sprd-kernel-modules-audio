@@ -48,6 +48,33 @@ enum {
 	CELL_NUMBER,
 };
 
+/* audio_sense begin */
+enum {
+	AUDIO_SENSE_CLOSE = -1,
+	AUDIO_SENSE_MUSIC = 0,
+	AUDIO_SENSE_VOICE,
+	AUDIO_SENSE_VOIP,
+	AUDIO_SENSE_FM,
+	AUDIO_SENSE_RCV,
+	AUDIO_SENSE_UP_SPK_BYPASS,
+	AUDIO_SENSE_DOWN_SPK_BYPASS,
+	AUDIO_SENSE_MAX,
+};
+
+const char * const audio_sense_texts[] = {
+	"Music",
+	"Voice",
+	"Voip",
+	"Fm",
+	"Receiver",
+	"UpSpkBypass",
+	"DownSpkBypass",
+};
+
+const struct soc_enum audio_sense_enum =
+	SOC_ENUM_SINGLE_VIRT(ARRAY_SIZE(audio_sense_texts),
+			audio_sense_texts);
+/* audio_sense end */
 enum {
 	LEFT_CHANNEL = 0,
 	RIRHT_CHANNEL = 1,
@@ -59,6 +86,8 @@ struct sprd_asoc_hook_spk_priv {
 	bool gpio_requested[BOARD_FUNC_MAX];
 	int state[BOARD_FUNC_MAX];
 	int rcv_shared_multi_spk;
+	int hook_audio_sense[BOARD_FUNC_MAX];	// record what audio sense is applied in every hook
+	int audio_sense;			// audio_sense set by hal
 	spinlock_t lock;
 };
 
@@ -281,12 +310,63 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
+/* audio_sense begin */
+void audio_sense_put(int audio_sense)
+{
+	if(AUDIO_SENSE_MUSIC > audio_sense || AUDIO_SENSE_MAX <= audio_sense) {
+		audio_sense = AUDIO_SENSE_MUSIC;
+	}
+	sp_asoc_pr_info("%s put %d\n", __func__, audio_sense);
+	hook_spk_priv.audio_sense = audio_sense;
+}
+
+int audio_sense_get(void)
+{
+	return hook_spk_priv.audio_sense;
+}
+
+int audio_sense_need_update(int id)
+{
+	return (hook_spk_priv.audio_sense != hook_spk_priv.hook_audio_sense[id]) &&
+		(AUDIO_SENSE_CLOSE != hook_spk_priv.hook_audio_sense[id]);
+}
+/* audio_sense end */
+
 #ifdef CONFIG_SND_SOC_FS1815
+static void set_fs1815_scene(int audio_sense)
+{
+	pr_info("%s audio_sense: %d\n", __func__, audio_sense);
+	switch (audio_sense) {
+		case AUDIO_SENSE_MUSIC:
+			fsm_set_scene(0);
+			break;
+		case AUDIO_SENSE_VOICE:
+			fsm_set_scene(1);
+			break;
+		case AUDIO_SENSE_VOIP:
+			fsm_set_scene(2);
+			break;
+		case AUDIO_SENSE_FM:
+			fsm_set_scene(0);
+			break;
+		case AUDIO_SENSE_RCV:
+			fsm_set_scene(15);
+			break;
+		case AUDIO_SENSE_UP_SPK_BYPASS:
+			fsm_set_scene(7);
+			break;
+		case AUDIO_SENSE_DOWN_SPK_BYPASS:
+			fsm_set_scene(13);
+			break;
+		default:
+			fsm_set_scene(0);
+	};
+}
+
 static int hook_spk_i2c_fs1815(int id, int on)
 {
 	int mode;
-
-	pr_info("%s id: %d, on: %d\n", __func__, id, on);
+	int audio_sense = hook_spk_priv.audio_sense;
 
 	mode = hook_spk_priv.priv_data[id];
 	if (mode > GENERAL_SPK_MODE)
@@ -299,6 +379,13 @@ static int hook_spk_i2c_fs1815(int id, int on)
 			pr_info("%s mode: %d, select_mode: %d\n", __func__, mode, select_mode);
 		}
 		hook_spk_priv.state[id] = mode;
+		if ((id == 2) && (audio_sense==AUDIO_SENSE_VOIP  || audio_sense==AUDIO_SENSE_VOICE)) {
+			hook_spk_priv.hook_audio_sense[id] =AUDIO_SENSE_RCV;
+			set_fs1815_scene(AUDIO_SENSE_RCV);
+		} else {
+			hook_spk_priv.hook_audio_sense[id] = audio_sense;
+			set_fs1815_scene(audio_sense);
+		}
 		//enable PA
 		if (id == 2)
 			fsm_set_scene(15);
@@ -307,9 +394,14 @@ static int hook_spk_i2c_fs1815(int id, int on)
 		//disable PA
 		fsm_speaker_off();
 		hook_spk_priv.state[id] = 0;
-		fsm_set_scene(0);
+		hook_spk_priv.hook_audio_sense[id] = AUDIO_SENSE_CLOSE;
+		set_fs1815_scene(AUDIO_SENSE_CLOSE);
 		msleep(1); // avoid handset/handsfree switched to fast
 	}
+	pr_info("%s id=%d  on=%d  hook state {%d, %d, %d} audio_sense: %s", __func__, id, on,
+			hook_spk_priv.state[0], hook_spk_priv.state[1], hook_spk_priv.state[2],
+			(hook_spk_priv.hook_audio_sense[id] > AUDIO_SENSE_CLOSE && hook_spk_priv.hook_audio_sense[id] < AUDIO_SENSE_MAX) ?
+			audio_sense_texts[hook_spk_priv.hook_audio_sense[id]] : "NULL");
 	return HOOK_OK;
 }
 
@@ -334,6 +426,7 @@ static int hook_spk_i2c(int id, int on)
 					hook_spk_i2c_fs1815(BOARD_FUNC_SPK1, 0);
 				}
 				hook_spk_priv.state[BOARD_FUNC_EAR] = -1; // ear virtual on
+				//hook_spk_priv.hook_audio_sense[BOARD_FUNC_EAR] = audio_sense;
 			}
 			// spk on/off
 			hook_spk_i2c_fs1815(id, on);
@@ -355,6 +448,7 @@ static int hook_spk_i2c(int id, int on)
 			// when ear on/off, if spk is on: ear virtual on/off; else ear real on/off
 			if (0 < hook_spk_priv.state[BOARD_FUNC_SPK]) {
 				hook_spk_priv.state[BOARD_FUNC_EAR] = ((on > 0) ? -1:0); // ear virtual on/off
+				//hook_spk_priv.hook_audio_sense[BOARD_FUNC_EAR] = ((on > 0) ? audio_sense : AUDIO_SENSE_CLOSE);
 			} else {
 				hook_spk_i2c_fs1815(BOARD_FUNC_EAR, on); // ear real on/off
 				if (hook_spk_priv.rcv_shared_multi_spk) {
@@ -368,8 +462,12 @@ static int hook_spk_i2c(int id, int on)
 			hook_spk_i2c_fs1815(id, on);
 			break;
 	}
-	pr_info("%s id=%d  on=%d  hook state {%d, %d, %d}", __func__, id, on, 
+	pr_info("%s id=%d  on=%d  hook state {%d, %d, %d}", __func__, id, on,
 			hook_spk_priv.state[0], hook_spk_priv.state[1], hook_spk_priv.state[2]);
+	pr_info("%s hook sense {%d, %d, %d}", __func__,
+			hook_spk_priv.hook_audio_sense[0],
+			hook_spk_priv.hook_audio_sense[1],
+			hook_spk_priv.hook_audio_sense[2]);
 	return HOOK_OK;
 }
 #endif
@@ -394,6 +492,12 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 	unsigned int ext_ctrl_type, share_gpio, hook_sel, priv_data;
 	u32 *buf;
 	u32 extral_iic_pa = 0;
+
+	// init audio sense
+	hook_spk_priv.audio_sense = AUDIO_SENSE_MUSIC;
+	for (i = 0; i < BOARD_FUNC_MAX; i++) {
+		hook_spk_priv.hook_audio_sense[i] = AUDIO_SENSE_CLOSE;
+	}
 
 	ret = of_property_read_u32(np, extral_iic_pa_info, &extral_iic_pa);
 	if (!ret) {

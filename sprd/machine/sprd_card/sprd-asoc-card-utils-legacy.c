@@ -474,6 +474,57 @@ int sprd_asoc_card_parse_smartamp_boost(struct device *dev,
 	return 0;
 }
 
+/* audio_sense begin */
+extern void audio_sense_put(int audio_sense);
+extern int audio_sense_get(void);
+extern int audio_sense_need_update(int id);
+extern const struct soc_enum audio_sense_enum;
+
+int sprd_audio_sense_put(
+		struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *texts = (struct soc_enum *)kcontrol->private_value;
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+	int item = ucontrol->value.enumerated.item[0];
+	int id = 0;
+
+	if (item > e->items) {
+		pr_err("Invalid item(%d) for audio_sense\n", item);
+		return -EINVAL;
+	}
+
+	sp_asoc_pr_info("%s put '%s'\n",
+			__func__, texts->texts[item]);
+	audio_sense_put(item);
+
+	// update audio sense
+	for (id = 0; id < BOARD_FUNC_MAX; id++) {
+		if (audio_sense_need_update(id)) {
+			sp_asoc_pr_info("%s hook %d audio sense update\n",
+					__func__, id);
+			//close
+			board_ext_hook(id, 0);
+			//reopen
+			board_ext_hook(id, 1);
+		}
+	}
+
+	return 0;
+}
+
+int sprd_audio_sense_get(
+		struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *texts = (struct soc_enum *)kcontrol->private_value;
+	ucontrol->value.enumerated.item[0] = audio_sense_get();
+	sp_asoc_pr_info("%s get %d\n",
+			__func__, texts->texts[ucontrol->value.enumerated.item[0]]);
+	return 0;
+}
+/* audio_sense end */
+
 #define BOARD_CODEC_FUNC(xname, xreg) \
 	SOC_SINGLE_EXT(xname, FUN_REG(xreg), \
 		0, 1, 0, board_func_get, board_func_set)
@@ -504,6 +555,8 @@ static const struct snd_kcontrol_new _sprd_asoc_card_controls[] = {
 	/*smart amp boost function select*/
 	SOC_ENUM_EXT("SmartAmp Boost", smartamp_boost_enum, smartamp_boost_get,
 				smartamp_boost_set),
+	SOC_ENUM_EXT("Board Scene", audio_sense_enum,
+			sprd_audio_sense_get, sprd_audio_sense_put),
 };
 
 struct sprd_array_size sprd_asoc_card_controls = {
