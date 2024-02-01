@@ -382,13 +382,14 @@ static int hook_spk_i2c_fs1815(int id, int on)
 		if ((id == 2) && (audio_sense==AUDIO_SENSE_VOIP  || audio_sense==AUDIO_SENSE_VOICE)) {
 			hook_spk_priv.hook_audio_sense[id] =AUDIO_SENSE_RCV;
 			set_fs1815_scene(AUDIO_SENSE_RCV);
+		} else if ((id == 0 || id == 1) && (audio_sense==AUDIO_SENSE_VOIP || audio_sense==AUDIO_SENSE_VOICE)) {
+			hook_spk_priv.hook_audio_sense[id] =audio_sense;
+			set_fs1815_scene(AUDIO_SENSE_VOICE);
 		} else {
 			hook_spk_priv.hook_audio_sense[id] = audio_sense;
 			set_fs1815_scene(audio_sense);
 		}
 		//enable PA
-		if (id == 2)
-			fsm_set_scene(15);
 		fsm_speaker_onn();
 	} else {
 		//disable PA
