@@ -331,6 +331,7 @@ struct sprd_codec_priv {
 	u32 ana_chip_id;
 	u32 ana_chip_ver_id;
 	bool bias_en;
+	u32 daao_dsel;
 };
 
 static const char * const das_input_mux_texts[] = {
@@ -4807,6 +4808,38 @@ static int sprd_codec_get_ana_chip_id(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int sprd_codec_get_daao_dsel(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct sprd_codec_priv *sprd_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = sprd_codec->daao_dsel;
+
+	return 0;
+}
+
+static int sprd_codec_set_daao_dsel(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct sprd_codec_priv *sprd_codec = snd_soc_component_get_drvdata(codec);
+	unsigned int mask, val;
+
+	sprd_codec->daao_dsel = ucontrol->value.integer.value[0];
+	mask = DAAO_DSEL_R2L | DAAO_DSEL_L2R;
+	if (sprd_codec->daao_dsel != 0) {
+		val = DAAO_DSEL_R2L | DAAO_DSEL_L2R;
+	} else {
+		val = 0;
+	}
+	snd_soc_component_update_bits(codec, SOC_REG(ANA_DAC3), mask, val);
+	sp_asoc_pr_info("%s set daao dsel %d\n", __func__,
+		sprd_codec->daao_dsel);
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new sprd_codec_snd_controls[] = {
 	SOC_ENUM_EXT("Aud Codec Info", codec_info_enum,
 		     sprd_codec_info_get, NULL),
@@ -4892,6 +4925,8 @@ static const struct snd_kcontrol_new sprd_codec_snd_controls[] = {
 		bias_power_get, bias_power_put),
 	SOC_SINGLE_EXT("Codec Chip ID", 0, 0, INT_MAX, 0,
 		       sprd_codec_get_ana_chip_id, NULL),
+	SOC_SINGLE_EXT("DAAO DSEL", 0, 0, INT_MAX, 0,
+		       sprd_codec_get_daao_dsel, sprd_codec_set_daao_dsel),
 };
 
 static unsigned int sprd_codec_read(struct snd_soc_component *codec,
