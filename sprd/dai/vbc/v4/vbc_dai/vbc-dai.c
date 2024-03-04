@@ -455,6 +455,7 @@ static int get_ivsense_adc_id(void)
 #define MAX_12_BIT (0xfff)
 #define SRC_MAX_VAL (48000)
 #define USB_SRC_MAX_VAL (192000)
+#define HP_CROSSTALK_GAIN_DEFAULT (13500)
 
 #define SPRD_VBC_ENUM(xreg, xmax, xtexts)\
 	SOC_ENUM_SINGLE(xreg, 0, xmax, xtexts)
@@ -4798,19 +4799,19 @@ static int dsp_cur_out_device_put(struct snd_kcontrol *kcontrol,
 	return value;
 }
 
-static int dsp_hp_crosstalk_en_get(struct snd_kcontrol *kcontrol,
+static int dsp_hp_3p_crosstalk_en_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
 
-	ucontrol->value.integer.value[0] = vbc_codec->hp_crosstalk_en;
+	ucontrol->value.integer.value[0] = vbc_codec->hp_3p_crosstalk_en;
 
 	return 0;
 }
 
-static int dsp_hp_crosstalk_en_put(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
+static int dsp_hp_3p_crosstalk_en_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
 {
 	u32 enable;
 	int ret;
@@ -4818,29 +4819,90 @@ static int dsp_hp_crosstalk_en_put(struct snd_kcontrol *kcontrol,
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
 
 	enable = ucontrol->value.enumerated.item[0];
-	pr_info("%s enable = %d\n", __func__, enable);
+	pr_info("%s enable = %d, gain0=%d, gain1=%d\n", __func__, enable,
+		vbc_codec->hp_3p_crosstalk_gain.gain0, vbc_codec->hp_3p_crosstalk_gain.gain1);
 
-	vbc_codec->hp_crosstalk_en = enable;
+	vbc_codec->hp_3p_crosstalk_en = enable;
 	ret = dsp_hp_crosstalk_en_set(enable);
 	if (ret != 0)
-		pr_err("%s set hp_crosstalk_en failed %d\n", __func__, ret);
+		pr_err("%s set hp_3p_crosstalk_en failed %d\n", __func__, ret);
+
+	if (enable) {
+		ret = dsp_hp_crosstalk_gain(vbc_codec->hp_3p_crosstalk_gain.gain0,
+			vbc_codec->hp_3p_crosstalk_gain.gain1);
+		if (ret != 0)
+			pr_err("%s enable, set hp_3p_crosstalk_gain failed %d\n",
+				__func__, ret);
+	}
+	else {
+		ret = dsp_hp_crosstalk_gain(0, 0);
+		if (ret != 0)
+			pr_err("%s disable, set hp_3p_crosstalk_gain failed %d\n",
+				__func__, ret);
+	}
+
 	return 0;
 }
 
-static int dsp_hp_crosstalk_gain_get(struct snd_kcontrol *kcontrol,
+static int dsp_hp_4p_crosstalk_en_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
 
-	ucontrol->value.integer.value[0] = vbc_codec->hp_crosstalk_gain.gain0;
-	ucontrol->value.integer.value[1] = vbc_codec->hp_crosstalk_gain.gain1;
+	ucontrol->value.integer.value[0] = vbc_codec->hp_4p_crosstalk_en;
 
 	return 0;
 }
 
-static int dsp_hp_crosstalk_gain_put(struct snd_kcontrol *kcontrol,
-				    struct snd_ctl_elem_value *ucontrol)
+static int dsp_hp_4p_crosstalk_en_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	u32 enable;
+	int ret;
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	enable = ucontrol->value.enumerated.item[0];
+	pr_info("%s enable = %d, gain0=%d, gain1=%d\n", __func__, enable,
+		vbc_codec->hp_4p_crosstalk_gain.gain0, vbc_codec->hp_4p_crosstalk_gain.gain1);
+
+	vbc_codec->hp_4p_crosstalk_en = enable;
+	ret = dsp_hp_crosstalk_en_set(enable);
+	if (ret != 0)
+		pr_err("%s set hp_4p_crosstalk_en failed %d\n", __func__, ret);
+
+	if (enable) {
+		ret = dsp_hp_crosstalk_gain(vbc_codec->hp_4p_crosstalk_gain.gain0,
+			vbc_codec->hp_4p_crosstalk_gain.gain1);
+		if (ret != 0)
+			pr_err("%s enable, set hp_4p_crosstalk_gain failed %d\n",
+				__func__, ret);
+	}
+	else {
+		ret = dsp_hp_crosstalk_gain(0, 0);
+		if (ret != 0)
+			pr_err("%s disable, set hp_4p_crosstalk_gain failed %d\n",
+				__func__, ret);
+	}
+
+	return 0;
+}
+
+static int dsp_hp_3p_crosstalk_gain_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->hp_3p_crosstalk_gain.gain0;
+	ucontrol->value.integer.value[1] = vbc_codec->hp_3p_crosstalk_gain.gain1;
+
+	return 0;
+}
+
+static int dsp_hp_3p_crosstalk_gain_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
 	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
@@ -4848,14 +4910,48 @@ static int dsp_hp_crosstalk_gain_put(struct snd_kcontrol *kcontrol,
 
 	val0 = ucontrol->value.integer.value[0];
 	val1 = ucontrol->value.integer.value[1];
-	sp_asoc_pr_dbg("%s, hp_crosstalk_gain, gain0=%d, gain1=%d\n",
+	sp_asoc_pr_dbg("%s, hp_3p_crosstalk_gain, gain0=%d, gain1=%d\n",
 		       __func__, val0, val1);
-	vbc_codec->hp_crosstalk_gain.gain0 = val0;
-	vbc_codec->hp_crosstalk_gain.gain1 = val1;
+	vbc_codec->hp_3p_crosstalk_gain.gain0 = val0;
+	vbc_codec->hp_3p_crosstalk_gain.gain1 = val1;
 
 	ret = dsp_hp_crosstalk_gain(val0, val1);
 	if (ret != 0)
-		pr_err("%s set hp_crosstalk_gain failed %d\n", __func__, ret);
+		pr_err("%s set hp_3p_crosstalk_gain failed %d\n", __func__, ret);
+
+	return 0;
+}
+
+static int dsp_hp_4p_crosstalk_gain_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->hp_4p_crosstalk_gain.gain0;
+	ucontrol->value.integer.value[1] = vbc_codec->hp_4p_crosstalk_gain.gain1;
+
+	return 0;
+}
+
+static int dsp_hp_4p_crosstalk_gain_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *codec = snd_soc_kcontrol_component(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_component_get_drvdata(codec);
+	int val0, val1, ret;
+
+	val0 = ucontrol->value.integer.value[0];
+	val1 = ucontrol->value.integer.value[1];
+	sp_asoc_pr_dbg("%s, hp_4p_crosstalk_gain, gain0=%d, gain1=%d\n",
+		       __func__, val0, val1);
+	vbc_codec->hp_4p_crosstalk_gain.gain0 = val0;
+	vbc_codec->hp_4p_crosstalk_gain.gain1 = val1;
+
+	ret = dsp_hp_crosstalk_gain(val0, val1);
+	if (ret != 0)
+		pr_err("%s set hp_4p_crosstalk_gain failed %d\n", __func__, ret);
+
 	return 0;
 }
 
@@ -5566,12 +5662,18 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 	SOC_ENUM_EXT("VAD_DIN_AD_SEL", vad_din_ad_sel_enum,
 		     vad_din_ad_sel_get, vad_din_ad_sel_put),
 
-	SOC_SINGLE_BOOL_EXT("HP_CROSSTALK_EN", 0,
-			    dsp_hp_crosstalk_en_get, dsp_hp_crosstalk_en_put),
-	SOC_DOUBLE_R_EXT_TLV("HP_CROSSTALK_GAIN",
+	SOC_SINGLE_BOOL_EXT("HP_3P_CROSSTALK_EN", 0,
+			    dsp_hp_3p_crosstalk_en_get, dsp_hp_3p_crosstalk_en_put),
+	SOC_SINGLE_BOOL_EXT("HP_4P_CROSSTALK_EN", 0,
+			    dsp_hp_4p_crosstalk_en_get, dsp_hp_4p_crosstalk_en_put),
+	SOC_DOUBLE_R_EXT_TLV("HP_3P_CROSSTALK_GAIN",
 			     0, 1, 0, MIXERDG_MAX_VAL, 0,
-			     dsp_hp_crosstalk_gain_get,
-			     dsp_hp_crosstalk_gain_put, hpg_tlv),
+			     dsp_hp_3p_crosstalk_gain_get,
+			     dsp_hp_3p_crosstalk_gain_put, hpg_tlv),
+	SOC_DOUBLE_R_EXT_TLV("HP_4P_CROSSTALK_GAIN",
+			     0, 1, 0, MIXERDG_MAX_VAL, 0,
+			     dsp_hp_4p_crosstalk_gain_get,
+			     dsp_hp_4p_crosstalk_gain_put, hpg_tlv),
 	SOC_ENUM_EXT("DSP_AUX_MIC2_SEL",
 		     dsp_aux_mic2_enum,
 		     dsp_aux_mic2_sel_get, dsp_aux_mic2_sel_put),
@@ -5954,6 +6056,12 @@ static void init_vbc_codec_data(struct vbc_codec_priv *vbc_codec)
 		vbc_codec->mux_dac_out[i].id = i;
 		vbc_codec->mux_dac_out[i].val = DAC_OUT_FROM_IIS;
 	}
+
+	/* vbc hp crosstalk gain */
+	vbc_codec->hp_3p_crosstalk_gain.gain0 = HP_CROSSTALK_GAIN_DEFAULT;
+	vbc_codec->hp_3p_crosstalk_gain.gain1 = HP_CROSSTALK_GAIN_DEFAULT;
+	vbc_codec->hp_4p_crosstalk_gain.gain0 = HP_CROSSTALK_GAIN_DEFAULT;
+	vbc_codec->hp_4p_crosstalk_gain.gain1 = HP_CROSSTALK_GAIN_DEFAULT;
 }
 
 int sprd_vbc_codec_probe(struct platform_device *pdev)

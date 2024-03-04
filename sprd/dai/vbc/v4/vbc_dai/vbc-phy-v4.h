@@ -1580,8 +1580,10 @@ struct vbc_codec_priv {
 	u32 iis_mst_width;
 	u16 voice_capture_type;
 	u16 voice_pcm_play_mode;
-	u32 hp_crosstalk_en;
-	struct hp_crosstalk_gain_t hp_crosstalk_gain;
+	u32 hp_3p_crosstalk_en;
+	u32 hp_4p_crosstalk_en;
+	struct hp_crosstalk_gain_t hp_3p_crosstalk_gain;
+	struct hp_crosstalk_gain_t hp_4p_crosstalk_gain;
 	u16 vad_din_ad_sel;
 	u32 aux_mic2_sel_enable;
 	u32 smartamp_iv_exchange_enable;
