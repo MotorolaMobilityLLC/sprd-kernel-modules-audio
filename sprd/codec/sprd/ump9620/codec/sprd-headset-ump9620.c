@@ -398,7 +398,7 @@ static void sprd_hmicbias_mode_set(struct sprd_headset *hdst,
 		regulator_set_mode(power_micbias->hdst_regu, mode);
 }
 
-//#define HEADSET_NOTIFIER
+#define HEADSET_NOTIFIER
 #ifdef HEADSET_NOTIFIER
 #define PLUG_IN 1
 #define PLUG_OUT 0
@@ -407,18 +407,19 @@ static BLOCKING_NOTIFIER_HEAD(hp_chain_list);
 int headset_register_notifier(struct notifier_block *nb)
 {
 	struct sprd_headset *hdst = sprd_hdst;
+#if 0
 	struct sprd_headset_platform_data *pdata = (hdst ? &hdst->pdata : NULL);
-
+#endif
 	if (!hdst) {
 		pr_err("%s sprd_hdset is NULL!\n", __func__);
 		return 0;
 	}
-
+#if 0
 	if (pdata->jack_type == JACK_TYPE_NO) {
 		nb = NULL;
 		return 0;
 	}
-
+#endif
 	return blocking_notifier_chain_register(&hp_chain_list, nb);
 }
 #ifdef HEADSET_NOTIFIER
