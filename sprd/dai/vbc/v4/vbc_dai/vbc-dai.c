@@ -724,9 +724,21 @@ static int vbc_src_put(struct snd_kcontrol *kcontrol,
 	int id = mc->shift;
 
 	val1 = ucontrol->value.integer.value[0];
+	vbc_codec->src_fs[id] = val1;
+
+	if (id == VBC_SRC_BT_DAC || id == VBC_SRC_BT_ADC) {
+		if (val1 == 48000 && \
+			(vbc_codec->src_fs[VBC_SRC_BT_DAC] != vbc_codec->src_fs[VBC_SRC_BT_ADC])) {
+			sp_asoc_pr_info("%s %s, src_fs=%d, bt_src=%d %d not set\n",
+				__func__, vbc_src_id2name(id), val1,
+				vbc_codec->src_fs[VBC_SRC_BT_DAC],
+				vbc_codec->src_fs[VBC_SRC_BT_ADC]);
+			return 0;
+		}
+	}
+
 	sp_asoc_pr_dbg("%s %s, src_fs=%d\n", __func__,
 		       vbc_src_id2name(id), val1);
-	vbc_codec->src_fs[id] = val1;
 	dsp_vbc_src_set(id, val1);
 
 	return 0;
