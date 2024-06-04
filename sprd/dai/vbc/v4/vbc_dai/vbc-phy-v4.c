@@ -699,6 +699,7 @@ int dsp_vbc_dg_set(int id, int dg_l, int dg_r)
 	dg_para.dg_id = id;
 	dg_para.dg_left = dg_l;
 	dg_para.dg_right = dg_r;
+    pr_info("%s l:%02d r:%02d\n", __func__,dg_para.dg_left,dg_para.dg_right);
 
 	ret = aud_send_cmd(AMSG_CH_VBC_CTL, SND_KCTL_TYPE_DG,
 		-1, SND_VBC_DSP_IO_KCTL_SET,

@@ -128,7 +128,13 @@ struct dsp_log_sbuf {
 	u32 offset;
 };
 
+struct audio_dsp_dump {
+	struct mutex mutex;
+	bool dsp_dump_init;
+};
+
 static struct class *audio_dsp_class;
+static struct audio_dsp_dump g_audio_dsp_dump;
 
 /* add_headers - add SMP header and MSG_HEADER_T.
  * @buf: buffer to fill headers
@@ -203,13 +209,16 @@ static int audio_dsp_open(struct inode *inode, struct file *filp)
 	static struct dsp_log_device *dsp_log;
 	struct dsp_log_sbuf *audio_buf;
 
+	mutex_lock(&g_audio_dsp_dump.mutex);
 	dsp_log = container_of(inode->i_cdev, struct dsp_log_device, cdev);
-	pr_info("%s, minor = %d, dsp_log->minor =%d\n", __func__, minor,
-	       dsp_log->minor);
+	pr_info("%s, minor = %d, dsp_log->minor =%d, name=%s\n", __func__, minor,
+	       dsp_log->minor, dsp_log->init->name);
 
 	audio_buf = kzalloc(sizeof(struct dsp_log_sbuf), GFP_KERNEL);
-	if (!audio_buf)
+	if (!audio_buf) {
+		mutex_unlock(&g_audio_dsp_dump.mutex);
 		return -ENOMEM;
+        }
 	audio_buf->dst = dsp_log->init->dst;
 	audio_buf->channel = dsp_log->init->channel;
 	audio_buf->dump_type = dsp_log->init->dump_type;
@@ -221,6 +230,9 @@ static int audio_dsp_open(struct inode *inode, struct file *filp)
 	audio_buf->dev_res = dsp_log;
 	filp->private_data   = audio_buf;
 
+	pr_info("%s end, dump_mem_dsp=0x%x, name=%s\n", __func__,
+			audio_buf->dump_mem_dsp, dsp_log->init->name);
+	mutex_unlock(&g_audio_dsp_dump.mutex);
 	return 0;
 }
 
@@ -540,7 +552,7 @@ static long audio_dsp_ioctl(struct file *filp,
 	if (!dev_res)
 		return -EFAULT;
 
-	pr_info("%s enter into\n", __func__);
+	pr_info("%s enter into, name=%s\n", __func__, audio_buf->dev_res->init->name);
 	switch (cmd) {
 	case DSPLOG_CMD_LOG_ENABLE:
 		pr_info(" dsp log enable %ld, audio_buf->channel: %d\n",
@@ -635,6 +647,8 @@ static long audio_dsp_ioctl(struct file *filp,
 		mutex_unlock(&dev_res->mutex);
 		break;
 	case DSPLOG_CMD_CALL_INFO_ENABLE:
+		pr_info("call_info : %ld, audio_buf->channel: %d\n",
+				arg, audio_buf->channel);
 		in_arg = arg ? audio_buf->usedmem_size : DUMP_CALL_INFO_DISABLE;
 		ret = aud_send_cmd_no_wait(audio_buf->channel, AUDIO_DUMP_CALL_INFO,
 				(u32)audio_buf->dump_mem_dsp, in_arg, 0, 0);
@@ -902,6 +916,12 @@ static int audio_dsp_probe(struct platform_device *pdev)
 		pr_err("%s defer\n", __func__);
 		return -EPROBE_DEFER;
 	}
+
+	if (g_audio_dsp_dump.dsp_dump_init == false) {
+		mutex_init(&g_audio_dsp_dump.mutex);
+		g_audio_dsp_dump.dsp_dump_init = true;
+	}
+
 	init = kzalloc(sizeof(struct dsp_log_init_data), GFP_KERNEL);
 	if (!init)
 		return -ENOMEM;

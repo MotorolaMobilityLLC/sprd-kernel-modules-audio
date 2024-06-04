@@ -809,9 +809,9 @@ static int vbc_dg_put(struct snd_kcontrol *kcontrol,
 	vbc_codec->dg[id].dg_right = val2;
 
 	dsp_vbc_dg_set(id, val1, val2);
-	sp_asoc_pr_dbg("%s %s l:%02d r:%02d\n",
-		       __func__, vbc_dg_id2name(id), vbc_codec->dg[id].dg_left,
-		       vbc_codec->dg[id].dg_right);
+    pr_info("%s %s l:%02d r:%02d\n",
+    __func__, vbc_dg_id2name(id), vbc_codec->dg[id].dg_left,
+    vbc_codec->dg[id].dg_right);
 
 	return 0;
 }
