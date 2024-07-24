@@ -275,11 +275,6 @@ struct sprd_headset {
 	unsigned int codec_intc;
 	unsigned long time_after_4pole_report;
 	u32 typec_i2c_en;
-	int button_ignore;
-	bool disable_button;
-	bool stop_button_work;
-	struct delayed_work det_disbutton_work;
-	struct workqueue_struct *det_disbutton_work_q;
 };
 
 struct sprd_headset_global_vars {
