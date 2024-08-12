@@ -4933,6 +4933,7 @@ static unsigned int sprd_codec_read(struct snd_soc_component *codec,
 				    unsigned int reg)
 {
 	int ret = 0;
+	unsigned int val;
 
 	/*
 	 * Because snd_soc_component_update_bits reg is 16 bits short type,
@@ -4949,6 +4950,18 @@ static unsigned int sprd_codec_read(struct snd_soc_component *codec,
 			return ret;
 		}
 		codec_digital_reg_enable(codec);
+
+		agcp_ahb_reg_read(REG_AGCP_AHB_MODULE_EB0_STS, &val);
+		pr_info("%s AHB_MODULE_EB0_STS 0x%x\n", __func__, val);
+
+		if((val & (BIT_AUD_EB_V2 | BIT_AUDIF_CKG_AUTO_EN_V2)) == 0) {
+			pr_err("%s aud en is not set, ERROR!\n", __func__);
+			codec_digital_reg_disable(codec);
+			pm_runtime_mark_last_busy(codec->dev);
+			pm_runtime_put_autosuspend(codec->dev);
+			return ret;
+		}
+
 		ret = readl_relaxed((void __iomem *)(reg -
 			CODEC_DP_BASE + sprd_codec_dp_base));
 		codec_digital_reg_disable(codec);
@@ -4967,6 +4980,7 @@ static int sprd_codec_write(struct snd_soc_component *codec, unsigned int reg,
 			    unsigned int val)
 {
 	int ret = 0;
+	unsigned int val1;
 
 	if (IS_SPRD_CODEC_AP_RANG(reg | SPRD_CODEC_AP_BASE_HI)) {
 		reg |= SPRD_CODEC_AP_BASE_HI;
@@ -4987,6 +5001,18 @@ static int sprd_codec_write(struct snd_soc_component *codec, unsigned int reg,
 			return ret;
 		}
 		codec_digital_reg_enable(codec);
+
+		agcp_ahb_reg_read(REG_AGCP_AHB_MODULE_EB0_STS, &val1);
+		pr_info("%s AHB_MODULE_EB0_STS 0x%x\n", __func__, val1);
+
+		if((val1 & (BIT_AUD_EB_V2 | BIT_AUDIF_CKG_AUTO_EN_V2)) == 0) {
+			pr_err("%s aud en is not set, ERROR!\n", __func__);
+			codec_digital_reg_disable(codec);
+			pm_runtime_mark_last_busy(codec->dev);
+			pm_runtime_put_autosuspend(codec->dev);
+			return ret;
+		}
+
 		sp_asoc_pr_reg("D[0x%04x] R:[0x%08x]\n",
 			       (reg - CODEC_DP_BASE) & 0xFFFF,
 			       readl_relaxed((void __iomem *)(reg -
